@@ -212,14 +212,14 @@ class RiskAssessment(BaseModel):
 
 class ImplementationRoadmap(BaseModel):
     """Implementation roadmap from multi-agent analysis"""
-    immediate: List[str] = []
-    short_term: List[str] = []
-    long_term: List[str] = []
-    ongoing_maintenance: List[str] = []
-    timeline_overview: Optional[Dict[str, str]] = None
-    resource_requirements: Optional[Dict[str, str]] = None
-    success_metrics: Optional[Dict[str, str]] = None
+    immediate: List[Union[str, Dict[str, Any]]] = []
+    short_term: List[Union[str, Dict[str, Any]]] = []
+    long_term: List[Union[str, Dict[str, Any]]] = []
+    ongoing_maintenance: List[Union[str, Dict[str, Any]]] = []
+    phase_details: Optional[Dict[str, Dict[str, str]]] = None
     roadmap_summary: str = ""
+    total_implementation_time: Optional[str] = None
+    compliance_score_projection: Optional[str] = None
 
 class MultiAgentAnalysis(BaseModel):
     """Multi-agent analysis results"""

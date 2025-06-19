@@ -101,31 +101,46 @@ interface AuditResult {
       business_impact: string;
     };
     implementation_roadmap: {
-      immediate: string[];
-      short_term: string[];
-      long_term: string[];
-      ongoing_maintenance: string[];
-      timeline_overview?: {
-        immediate: string;
-        short_term: string;
-        long_term: string;
-        ongoing_maintenance: string;
-      };
-      resource_requirements?: {
-        immediate: string;
-        short_term: string;
-        long_term: string;
-        ongoing_maintenance: string;
-      };
-      success_metrics?: {
-        immediate: string;
-        short_term: string;
-        long_term: string;
-        ongoing_maintenance: string;
+      immediate: Array<string | ActionItem>;
+      short_term: Array<string | ActionItem>;
+      long_term: Array<string | ActionItem>;
+      ongoing_maintenance: Array<string | ActionItem>;
+      phase_details?: {
+        immediate?: PhaseDetails;
+        short_term?: PhaseDetails;
+        long_term?: PhaseDetails;
+        ongoing_maintenance?: PhaseDetails;
       };
       roadmap_summary?: string;
+      total_implementation_time?: string;
+      compliance_score_projection?: string;
     };
   };
+}
+
+interface ActionItem {
+  action: string;
+  reason: string;
+  effort: string;
+  validation: string;
+  skills?: string;
+  priority?: string;
+  dependencies?: string;
+  outcomes?: string;
+  success_metrics?: string;
+  timeline?: string;
+  frequency?: string;
+  responsibility?: string;
+  tools?: string;
+  alerts?: string;
+}
+
+interface PhaseDetails {
+  timeline: string;
+  priority: string;
+  budget_estimate: string;
+  team_size: string;
+  risk_if_delayed: string;
 }
 
 const CATEGORY_ICONS = {
@@ -154,10 +169,25 @@ const cleanMarkdownText = (text: string | undefined | null): string => {
 const transformCategories = (backendCategories: any) => {
   const transformed: any = {};
   
-  if (backendCategories) {
+  if (backendCategories && Object.keys(backendCategories).length > 0) {
     Object.entries(backendCategories).forEach(([key, category]: [string, any]) => {
+      // Calculate individual category score based on passed checks vs total checks
+      const passedCount = (category.passed || []).length;
+      const issuesCount = (category.issues || []).length;
+      const totalChecks = passedCount + issuesCount;
+      const categoryScore = totalChecks > 0 ? Math.round((passedCount / totalChecks) * 100) : 0;
+      
+      // Debug: Log category calculation
+      console.log(`Category ${key}:`, {
+        passed: passedCount,
+        issues: issuesCount,
+        total: totalChecks,
+        score: categoryScore,
+        categoryData: category
+      });
+      
       transformed[key] = {
-        score: Math.round(category.score || 0),
+        score: categoryScore,
         issues: (category.issues || []).map((issue: any) => ({
           category: issue.category || key,
           issue: cleanMarkdownText(issue.issue || issue.description || ''),
@@ -166,6 +196,17 @@ const transformCategories = (backendCategories: any) => {
           impact: cleanMarkdownText(issue.issue || '')
         })),
         passed_checks: category.passed || []
+      };
+    });
+  } else {
+    // Fallback: If no backend data, provide default categories with 0% scores
+    console.warn('No backend category data received, using fallback');
+    const defaultCategories = ['gdpr', 'accessibility', 'wcag', 'seo', 'security'];
+    defaultCategories.forEach(category => {
+      transformed[category] = {
+        score: 0,
+        issues: [],
+        passed_checks: []
       };
     });
   }
@@ -224,6 +265,10 @@ export default function Home() {
       if (!response.ok) {
         throw new Error(data.detail || 'Audit failed');
       }
+
+      // Debug: Log the backend response structure (remove in production)
+      console.log('Backend response:', data);
+      console.log('Compliance categories:', data.compliance_results?.categories);
 
       setProgress(100);
       setTimeout(() => {
@@ -508,7 +553,10 @@ export default function Home() {
                           <div className="progress-ai h-2">
                             <div 
                               className="progress-ai-fill h-full"
-                              style={{ width: `${data.score}%` }}
+                              style={{ 
+                                width: `${Math.max(data.score, 0)}%`,
+                                minWidth: data.score > 0 ? `${data.score}%` : '0%'
+                              }}
                             />
                           </div>
                           
@@ -519,6 +567,11 @@ export default function Home() {
                             <span className="text-red-600 font-medium">
                               ⚠ {data.issues.length} Issues
                             </span>
+                          </div>
+                          
+                          {/* Debug score display */}
+                          <div className="text-xs text-gray-500 opacity-75">
+                            Debug: {data.score}% ({data.passed_checks.length} passed, {data.issues.length} issues)
                           </div>
                         </div>
                       </div>
@@ -812,61 +865,198 @@ export default function Home() {
                           </div>
 
                           {/* Action Items */}
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
                             <div>
                               <h5 className="font-semibold text-stone-700 dark:text-stone-200 mb-4 flex items-center gap-2">
                                 <CheckCircleIcon className="w-5 h-5 text-green-500" />
-                                Action Items
+                                Action Items ({(result.multi_agent_results?.implementation_roadmap[phase.key as keyof typeof result.multi_agent_results.implementation_roadmap] as Array<string | ActionItem>)?.length || 0})
                               </h5>
-                                                             <ul className="space-y-3">
-                                 {(Array.isArray(result.multi_agent_results?.implementation_roadmap[phase.key as keyof typeof result.multi_agent_results.implementation_roadmap]) 
-                                   ? result.multi_agent_results.implementation_roadmap[phase.key as keyof typeof result.multi_agent_results.implementation_roadmap] as string[]
-                                   : []
-                                 ).map((item: string, itemIndex: number) => (
-                                   <li key={itemIndex} className="flex items-start gap-3 text-stone-700 dark:text-stone-300">
-                                     <span className={`w-2 h-2 ${phase.color} rounded-full mt-2 shrink-0`}></span>
-                                     <span className="text-justify leading-relaxed">
-                                       {cleanMarkdownText(item)}
-                                     </span>
-                                   </li>
-                                 ))}
-                               </ul>
+                              <div className="space-y-4">
+                                {(result.multi_agent_results?.implementation_roadmap[phase.key as keyof typeof result.multi_agent_results.implementation_roadmap] as Array<string | ActionItem> || []).map((item: string | ActionItem, itemIndex: number) => {
+                                  // Handle both string and object formats for backward compatibility
+                                  const isActionItem = typeof item === 'object' && item !== null;
+                                  const actionText = isActionItem ? (item as ActionItem).action : (item as string);
+                                  const actionItem = isActionItem ? item as ActionItem : null;
+
+                                  return (
+                                    <div key={itemIndex} className="bg-white/60 dark:bg-stone-800/60 rounded-xl p-4 border border-stone-200/50 dark:border-stone-700/50">
+                                      {/* Main Action */}
+                                      <div className="flex items-start gap-3 mb-3">
+                                        <span className={`w-6 h-6 ${phase.color} rounded-full flex items-center justify-center text-white text-sm font-bold mt-0.5 shrink-0`}>
+                                          {itemIndex + 1}
+                                        </span>
+                                        <div className="flex-1">
+                                          <h6 className="font-semibold text-stone-800 dark:text-stone-100 leading-tight mb-2">
+                                            {cleanMarkdownText(actionText)}
+                                          </h6>
+                                          
+                                          {/* Action Details Grid */}
+                                          {actionItem && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                                              
+                                              {/* Reason */}
+                                              {actionItem.reason && (
+                                                <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 mb-1">
+                                                    <LightBulbIcon className="w-4 h-4 text-blue-500" />
+                                                    <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">Why</span>
+                                                  </div>
+                                                  <p className="text-sm text-blue-800 dark:text-blue-200">{actionItem.reason}</p>
+                                                </div>
+                                              )}
+
+                                              {/* Effort */}
+                                              {actionItem.effort && (
+                                                <div className="bg-orange-50 dark:bg-orange-900/30 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 mb-1">
+                                                    <ClockIcon className="w-4 h-4 text-orange-500" />
+                                                    <span className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase tracking-wide">Effort</span>
+                                                  </div>
+                                                  <p className="text-sm text-orange-800 dark:text-orange-200">{actionItem.effort}</p>
+                                                </div>
+                                              )}
+
+                                              {/* Validation */}
+                                              {actionItem.validation && (
+                                                <div className="bg-green-50 dark:bg-green-900/30 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 mb-1">
+                                                    <CheckCircleIcon className="w-4 h-4 text-green-500" />
+                                                    <span className="text-xs font-semibold text-green-700 dark:text-green-300 uppercase tracking-wide">Validation</span>
+                                                  </div>
+                                                  <p className="text-sm text-green-800 dark:text-green-200">{actionItem.validation}</p>
+                                                </div>
+                                              )}
+
+                                              {/* Skills */}
+                                              {actionItem.skills && (
+                                                <div className="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 mb-1">
+                                                    <CpuChipIcon className="w-4 h-4 text-purple-500" />
+                                                    <span className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide">Skills</span>
+                                                  </div>
+                                                  <p className="text-sm text-purple-800 dark:text-purple-200">{actionItem.skills}</p>
+                                                </div>
+                                              )}
+
+                                              {/* Dependencies */}
+                                              {actionItem.dependencies && (
+                                                <div className="bg-yellow-50 dark:bg-yellow-900/30 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 mb-1">
+                                                    <ExclamationTriangleIcon className="w-4 h-4 text-yellow-500" />
+                                                    <span className="text-xs font-semibold text-yellow-700 dark:text-yellow-300 uppercase tracking-wide">Dependencies</span>
+                                                  </div>
+                                                  <p className="text-sm text-yellow-800 dark:text-yellow-200">{actionItem.dependencies}</p>
+                                                </div>
+                                              )}
+
+                                              {/* Outcomes */}
+                                              {actionItem.outcomes && (
+                                                <div className="bg-teal-50 dark:bg-teal-900/30 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 mb-1">
+                                                    <ChartBarIcon className="w-4 h-4 text-teal-500" />
+                                                    <span className="text-xs font-semibold text-teal-700 dark:text-teal-300 uppercase tracking-wide">Outcomes</span>
+                                                  </div>
+                                                  <p className="text-sm text-teal-800 dark:text-teal-200">{actionItem.outcomes}</p>
+                                                </div>
+                                              )}
+
+                                              {/* Frequency (for maintenance items) */}
+                                              {actionItem.frequency && (
+                                                <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 mb-1">
+                                                    <ClockIcon className="w-4 h-4 text-indigo-500" />
+                                                    <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 uppercase tracking-wide">Frequency</span>
+                                                  </div>
+                                                  <p className="text-sm text-indigo-800 dark:text-indigo-200">{actionItem.frequency}</p>
+                                                </div>
+                                              )}
+
+                                              {/* Responsibility */}
+                                              {actionItem.responsibility && (
+                                                <div className="bg-rose-50 dark:bg-rose-900/30 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 mb-1">
+                                                    <GlobeAltIcon className="w-4 h-4 text-rose-500" />
+                                                    <span className="text-xs font-semibold text-rose-700 dark:text-rose-300 uppercase tracking-wide">Responsibility</span>
+                                                  </div>
+                                                  <p className="text-sm text-rose-800 dark:text-rose-200">{actionItem.responsibility}</p>
+                                                </div>
+                                              )}
+
+                                              {/* Priority */}
+                                              {actionItem.priority && (
+                                                <div className="bg-red-50 dark:bg-red-900/30 rounded-lg p-3">
+                                                  <div className="flex items-center gap-2 mb-1">
+                                                    <ExclamationTriangleIcon className="w-4 h-4 text-red-500" />
+                                                    <span className="text-xs font-semibold text-red-700 dark:text-red-300 uppercase tracking-wide">Priority</span>
+                                                  </div>
+                                                  <p className="text-sm text-red-800 dark:text-red-200">{actionItem.priority}</p>
+                                                </div>
+                                              )}
+
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
 
-                            <div className="space-y-4">
-                              {/* Timeline */}
-                              <div className="bg-white/50 dark:bg-stone-800/50 rounded-xl p-4">
-                                <h6 className="font-semibold text-stone-700 dark:text-stone-200 mb-2 flex items-center gap-2">
-                                  <ClockIcon className="w-4 h-4" />
-                                  Timeline
-                                </h6>
-                                                                 <p className="text-stone-600 dark:text-stone-400">
-                                   {result.multi_agent_results?.implementation_roadmap.timeline_overview?.[phase.key as keyof typeof result.multi_agent_results.implementation_roadmap.timeline_overview] || phase.subtitle}
-                                 </p>
-                              </div>
+                            {/* Phase Details from Backend */}
+                            {result.multi_agent_results?.implementation_roadmap.phase_details?.[phase.key as keyof typeof result.multi_agent_results.implementation_roadmap.phase_details] && (
+                              <div className="mt-6">
+                                <h5 className="font-semibold text-stone-700 dark:text-stone-200 mb-4 flex items-center gap-2">
+                                  <InformationCircleIcon className="w-5 h-5 text-blue-500" />
+                                  Phase Overview
+                                </h5>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {/* Timeline */}
+                                  <div className="bg-white/50 dark:bg-stone-800/50 rounded-xl p-4">
+                                    <h6 className="font-semibold text-stone-700 dark:text-stone-200 mb-2 flex items-center gap-2">
+                                      <ClockIcon className="w-4 h-4" />
+                                      Timeline
+                                    </h6>
+                                    <p className="text-stone-600 dark:text-stone-400">
+                                      {result.multi_agent_results.implementation_roadmap.phase_details[phase.key as keyof typeof result.multi_agent_results.implementation_roadmap.phase_details]?.timeline || phase.subtitle}
+                                    </p>
+                                  </div>
 
-                              {/* Resources */}
-                              <div className="bg-white/50 dark:bg-stone-800/50 rounded-xl p-4">
-                                <h6 className="font-semibold text-stone-700 dark:text-stone-200 mb-2 flex items-center gap-2">
-                                  <Cog6ToothIcon className="w-4 h-4" />
-                                  Resources
-                                </h6>
-                                                                 <p className="text-stone-600 dark:text-stone-400 text-sm">
-                                   {result.multi_agent_results?.implementation_roadmap.resource_requirements?.[phase.key as keyof typeof result.multi_agent_results.implementation_roadmap.resource_requirements] || 'Team resources required'}
-                                 </p>
-                              </div>
+                                  {/* Budget */}
+                                  <div className="bg-white/50 dark:bg-stone-800/50 rounded-xl p-4">
+                                    <h6 className="font-semibold text-stone-700 dark:text-stone-200 mb-2 flex items-center gap-2">
+                                      <ChartBarIcon className="w-4 h-4" />
+                                      Budget Estimate
+                                    </h6>
+                                    <p className="text-stone-600 dark:text-stone-400 text-sm">
+                                      {result.multi_agent_results.implementation_roadmap.phase_details[phase.key as keyof typeof result.multi_agent_results.implementation_roadmap.phase_details]?.budget_estimate || 'Budget TBD'}
+                                    </p>
+                                  </div>
 
-                              {/* Success Metrics */}
-                              <div className="bg-white/50 dark:bg-stone-800/50 rounded-xl p-4">
-                                <h6 className="font-semibold text-stone-700 dark:text-stone-200 mb-2 flex items-center gap-2">
-                                  <ChartBarIcon className="w-4 h-4" />
-                                  Success Metrics
-                                </h6>
-                                                                 <p className="text-stone-600 dark:text-stone-400 text-sm">
-                                   {result.multi_agent_results?.implementation_roadmap.success_metrics?.[phase.key as keyof typeof result.multi_agent_results.implementation_roadmap.success_metrics] || 'Measurable outcomes defined'}
-                                 </p>
+                                  {/* Team Size */}
+                                  <div className="bg-white/50 dark:bg-stone-800/50 rounded-xl p-4">
+                                    <h6 className="font-semibold text-stone-700 dark:text-stone-200 mb-2 flex items-center gap-2">
+                                      <Cog6ToothIcon className="w-4 h-4" />
+                                      Team Size
+                                    </h6>
+                                    <p className="text-stone-600 dark:text-stone-400 text-sm">
+                                      {result.multi_agent_results.implementation_roadmap.phase_details[phase.key as keyof typeof result.multi_agent_results.implementation_roadmap.phase_details]?.team_size || 'Team resources required'}
+                                    </p>
+                                  </div>
+
+                                  {/* Risk if Delayed */}
+                                  <div className="bg-white/50 dark:bg-stone-800/50 rounded-xl p-4">
+                                    <h6 className="font-semibold text-stone-700 dark:text-stone-200 mb-2 flex items-center gap-2">
+                                      <ExclamationTriangleIcon className="w-4 h-4 text-orange-500" />
+                                      Risk if Delayed
+                                    </h6>
+                                    <p className="text-stone-600 dark:text-stone-400 text-sm">
+                                      {result.multi_agent_results.implementation_roadmap.phase_details[phase.key as keyof typeof result.multi_agent_results.implementation_roadmap.phase_details]?.risk_if_delayed || 'Potential compliance issues'}
+                                    </p>
+                                  </div>
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </div>
 
                           {/* Progress Indicator */}
@@ -879,11 +1069,80 @@ export default function Home() {
                     <div className="mt-8 p-6 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
                       <h4 className="text-lg font-semibold text-stone-800 dark:text-stone-100 mb-3 flex items-center gap-2">
                         <InformationCircleIcon className="w-5 h-5 text-purple-500" />
-                        Roadmap Summary
+                        Implementation Overview
                       </h4>
-                      <p className="text-stone-700 dark:text-stone-300 leading-relaxed">
+                      
+                      {/* Summary Text */}
+                      <p className="text-stone-700 dark:text-stone-300 leading-relaxed mb-6">
                         {result.multi_agent_results.implementation_roadmap.roadmap_summary || 'Comprehensive implementation plan for achieving regulatory compliance'}
                       </p>
+
+                      {/* Key Metrics */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Total Implementation Time */}
+                        {result.multi_agent_results.implementation_roadmap.total_implementation_time && (
+                          <div className="bg-white/60 dark:bg-stone-800/60 rounded-lg p-4 text-center">
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                              <ClockIcon className="w-5 h-5 text-blue-500" />
+                              <span className="font-semibold text-stone-700 dark:text-stone-200">Total Timeline</span>
+                            </div>
+                            <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                              {result.multi_agent_results.implementation_roadmap.total_implementation_time}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Compliance Score Projection */}
+                        {result.multi_agent_results.implementation_roadmap.compliance_score_projection && (
+                          <div className="bg-white/60 dark:bg-stone-800/60 rounded-lg p-4 text-center">
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                              <ChartBarIcon className="w-5 h-5 text-green-500" />
+                              <span className="font-semibold text-stone-700 dark:text-stone-200">Expected Improvement</span>
+                            </div>
+                            <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                              {result.multi_agent_results.implementation_roadmap.compliance_score_projection}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Total Action Items */}
+                        <div className="bg-white/60 dark:bg-stone-800/60 rounded-lg p-4 text-center">
+                          <div className="flex items-center justify-center gap-2 mb-2">
+                            <RocketLaunchIcon className="w-5 h-5 text-purple-500" />
+                            <span className="font-semibold text-stone-700 dark:text-stone-200">Total Actions</span>
+                          </div>
+                          <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                            {[
+                              ...(result.multi_agent_results.implementation_roadmap.immediate || []),
+                              ...(result.multi_agent_results.implementation_roadmap.short_term || []),
+                              ...(result.multi_agent_results.implementation_roadmap.long_term || []),
+                              ...(result.multi_agent_results.implementation_roadmap.ongoing_maintenance || [])
+                            ].length} Items
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Implementation Tips */}
+                      <div className="mt-6 p-4 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
+                        <h5 className="font-semibold text-stone-800 dark:text-stone-100 mb-2 flex items-center gap-2">
+                          <BeakerIcon className="w-4 h-4 text-blue-500" />
+                          Implementation Tips
+                        </h5>
+                        <ul className="text-sm text-stone-700 dark:text-stone-300 space-y-1">
+                          <li className="flex items-start gap-2">
+                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 shrink-0"></span>
+                            Start with immediate actions to address critical security and legal compliance issues
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-2 shrink-0"></span>
+                            Each action item includes specific validation steps to ensure proper completion
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 shrink-0"></span>
+                            Track progress and re-run compliance audits after each phase completion
+                          </li>
+                        </ul>
+                      </div>
                     </div>
                   </div>
 

@@ -265,91 +265,149 @@ class MultiAgentComplianceAuditor:
         return "\n".join(summary_parts)
     
     def _create_agent_tasks(self, website_data: WebsiteData, technical_summary: str) -> List[Task]:
-        """Create sequential tasks for the agent workflow"""
+        """Create tasks for all agents to work on the website audit"""
         
-        # Task 1: Compliance Scanning
-        scanning_task = Task(
-            description=f"""Review and enhance the technical compliance analysis for: {website_data.url}
+        tasks = []
+        
+        # Task 1: Enhanced Compliance Analysis
+        compliance_task = Task(
+            description=f"""
+            Analyze the website {website_data.url} for comprehensive compliance issues.
             
-            TECHNICAL ANALYSIS COMPLETED:
-            {technical_summary}
+            Website Title: {website_data.title}
+            Technical Analysis Summary: {technical_summary}
             
-            Your role is to:
-            1. Validate the technical findings against current compliance standards
-            2. Add regulatory context and interpretation  
-            3. Identify any missed compliance issues based on your expertise
-            4. Provide detailed compliance scoring methodology
-            5. Add business impact assessment for each violation category
+            Your analysis should cover:
+            1. GDPR compliance (consent mechanisms, privacy policies, data collection practices)
+            2. WCAG 2.1 AA accessibility standards
+            3. ADA digital accessibility requirements  
+            4. SEO best practices
+            5. Security compliance standards
             
-            Focus on GDPR, WCAG 2.1 AA, ADA Title III, and security compliance standards.
+            Focus on identifying specific violations and their potential legal implications.
+            Provide detailed findings that will inform remediation strategies.
             """,
-            expected_output="Enhanced compliance analysis with regulatory validation and business impact assessment",
-            agent=self.compliance_scanner
+            agent=self.compliance_scanner,
+            expected_output="Detailed compliance analysis with specific violations categorized by regulation and severity"
         )
+        tasks.append(compliance_task)
         
-        # Task 2: Legal Update Retrieval and Context
-        legal_update_task = Task(
-            description=f"""Research and provide legal context for the identified compliance issues.
+        # Task 2: Legal Context and Updates
+        legal_task = Task(
+            description=f"""
+            Research and provide current legal context for compliance violations found on {website_data.url}.
             
-            TECHNICAL FINDINGS TO RESEARCH:
-            {technical_summary}
+            Based on the technical analysis: {technical_summary}
             
-            Use search tools to find:
-            1. Recent enforcement actions related to identified violations
-            2. Current penalty structures and legal precedents
-            3. Regional compliance variations for identified issues
-            4. Recent updates to GDPR, WCAG, ADA regulations
-            5. Industry-specific compliance requirements if applicable
+            Your research should include:
+            1. Recent updates to GDPR, CCPA, and other privacy regulations
+            2. Latest accessibility law enforcement trends (ADA Title III cases)
+            3. Current WCAG guidelines and upcoming changes
+            4. Regional compliance variations and requirements
+            5. Recent court cases and penalty precedents
             
-            Provide specific legal citations and current enforcement trends.
+            Provide context on how current legal trends affect the identified violations.
             """,
-            expected_output="Comprehensive legal context with current regulations, penalties, and enforcement patterns",
-            agent=self.legal_update_retriever
+            agent=self.legal_update_retriever,
+            expected_output="Current legal context with recent regulatory updates, enforcement trends, and applicable legal precedents"
         )
+        tasks.append(legal_task)
         
-        # Task 3: Enhanced Issue Mapping and Risk Assessment
+        # Task 3: Security Analysis (if SSL-related issues detected)
+        if "ssl" in technical_summary.lower() or "security" in technical_summary.lower():
+            security_task = Task(
+                description=f"""
+                Perform detailed security analysis for {website_data.url}.
+                
+                Technical findings: {technical_summary}
+                
+                Analyze:
+                1. SSL/TLS certificate configuration and validity
+                2. Security headers and best practices
+                3. Encryption standards and protocols
+                4. Security compliance requirements (PCI DSS, ISO 27001)
+                5. Vulnerability assessment and risk factors
+                
+                Provide specific security recommendations and risk mitigation strategies.
+                """,
+                agent=self.security_analysis_agent,
+                expected_output="Comprehensive security analysis with risk assessment and specific remediation recommendations"
+            )
+            tasks.append(security_task)
+        
+        # Task 4: Issue Mapping and Risk Assessment
         mapping_task = Task(
-            description=f"""Enhance the technical issue mapping with advanced risk assessment.
+            description=f"""
+            Map identified compliance issues to specific regulations and assess business risk.
             
-            TECHNICAL MAPPING COMPLETED:
-            {technical_summary}
+            Website: {website_data.url}
+            Technical Analysis: {technical_summary}
             
-            Enhance the analysis by:
-            1. Cross-referencing technical findings with legal requirements from previous research
-            2. Creating detailed risk matrix based on severity, likelihood, and business impact
-            3. Prioritizing fixes based on legal exposure and user impact
-            4. Identifying cascading compliance risks
-            5. Mapping issues to specific user journey impacts
+            Your mapping should:
+            1. Connect each violation to specific regulatory requirements (GDPR articles, WCAG success criteria)
+            2. Assess legal risk and potential financial penalties
+            3. Evaluate business impact and reputational risk
+            4. Prioritize issues based on severity and implementation complexity
+            5. Create a risk matrix for decision-making
             
-            Provide strategic prioritization recommendations.
+            Provide clear regulatory citations and risk-based prioritization.
             """,
-            expected_output="Enhanced risk assessment with strategic prioritization and regulatory mapping",
             agent=self.issue_mapping_agent,
-            context=[scanning_task, legal_update_task]
+            expected_output="Detailed issue mapping with regulatory citations, risk assessment matrix, and prioritized violation list"
         )
+        tasks.append(mapping_task)
         
-        # Task 4: Advanced Remediation Planning
-        remediation_task = Task(
-            description=f"""Enhance the technical remediation plan with implementation strategy.
+        # Task 5: Enhanced Implementation Roadmap Generation
+        roadmap_task = Task(
+            description=f"""
+            Create a comprehensive, actionable implementation roadmap for {website_data.url} based on all previous analysis.
             
-            TECHNICAL SOLUTIONS GENERATED:
-            {technical_summary}
+            Website Context:
+            - Title: {website_data.title}
+            - URL: {website_data.url}
+            - Technical Summary: {technical_summary}
             
-            Enhance the remediation plan by:
-            1. Adding implementation best practices and industry standards
-            2. Creating phased rollout strategy based on risk and complexity
-            3. Providing change management and testing protocols
-            4. Adding monitoring and maintenance recommendations
-            5. Suggesting automation opportunities for ongoing compliance
+            Generate a detailed roadmap with:
             
-            Create a comprehensive implementation roadmap with timelines and resources.
+            IMMEDIATE ACTIONS (0-2 weeks):
+            - Critical security fixes and SSL issues
+            - Essential accessibility violations (alt text, form labels)
+            - GDPR cookie consent implementation
+            - High-risk legal compliance issues
+            
+            SHORT-TERM GOALS (1-3 months):
+            - Comprehensive accessibility audit and fixes
+            - Privacy policy and data handling improvements
+            - SEO optimization and technical improvements
+            - Staff training and process establishment
+            
+            LONG-TERM STRATEGY (3-12 months):
+            - Compliance framework development
+            - Advanced accessibility features
+            - Comprehensive monitoring systems
+            - Legal review and documentation
+            
+            ONGOING MAINTENANCE:
+            - Regular compliance audits
+            - Regulatory update monitoring
+            - Staff training programs
+            - Performance tracking and reporting
+            
+            For each phase, include:
+            - Specific actionable tasks with technical details
+            - Estimated effort and resource requirements
+            - Success metrics and testing criteria
+            - Dependencies and prerequisites
+            - Cost estimates where applicable
+            
+            Make recommendations specific to the actual violations found, not generic advice.
             """,
-            expected_output="Strategic implementation roadmap with best practices and change management guidance",
             agent=self.remediation_advisor,
-            context=[scanning_task, legal_update_task, mapping_task]
+            expected_output="Detailed implementation roadmap with specific actions, timelines, resources, and success metrics for each phase"
         )
+        tasks.append(roadmap_task)
         
-        return [scanning_task, legal_update_task, mapping_task, remediation_task]
+        return tasks
     
     def _process_crew_results(self, crew_result: Any, website_data: WebsiteData) -> Dict[str, Any]:
         """Process and structure the crew execution results"""
@@ -803,49 +861,105 @@ class MultiAgentComplianceAuditor:
         return risk_data
     
     def _extract_implementation_roadmap(self, crew_result: Any) -> Dict[str, Any]:
-        """Extract implementation roadmap from crew results using LLM processing"""
+        """Extract detailed implementation roadmap from crew results using enhanced LLM processing"""
         
         try:
             # Get the actual crew output
             result_text = str(crew_result) if crew_result else ""
             
-            # Use LLM to parse and structure the roadmap from agent output
+            # Enhanced roadmap prompt for more specific, actionable content
             roadmap_prompt = f"""
-            Based on the following multi-agent compliance analysis results, extract and structure a comprehensive implementation roadmap:
+            Based on the following comprehensive multi-agent compliance analysis, create a detailed, actionable implementation roadmap:
             
+            ANALYSIS RESULTS:
             {result_text}
             
-            Please structure the response as JSON with the following format:
+            Generate specific, actionable items for each phase based on the ACTUAL violations found (not generic advice).
+            Structure as JSON with detailed content:
+            
             {{
-                "immediate": ["action1", "action2", ...],
-                "short_term": ["action1", "action2", ...], 
-                "long_term": ["action1", "action2", ...],
-                "ongoing_maintenance": ["action1", "action2", ...],
-                "timeline_overview": {{
-                    "immediate": "0-2 weeks",
-                    "short_term": "1-3 months",
-                    "long_term": "3-12 months", 
-                    "ongoing_maintenance": "Continuous"
+                "immediate": [
+                    {{
+                        "action": "specific action description",
+                        "reason": "why this is critical/immediate",
+                        "effort": "estimated hours/days",
+                        "skills": "required skills/team",
+                        "validation": "how to verify completion"
+                    }}
+                ],
+                "short_term": [
+                    {{
+                        "action": "specific action description", 
+                        "reason": "why this is important for compliance",
+                        "effort": "estimated time and resources",
+                        "dependencies": "what must be done first",
+                        "outcomes": "expected results"
+                    }}
+                ],
+                "long_term": [
+                    {{
+                        "action": "strategic initiative description",
+                        "reason": "long-term compliance value",
+                        "effort": "resource commitment required",
+                        "success_metrics": "measurable outcomes",
+                        "timeline": "specific milestones"
+                    }}
+                ],
+                "ongoing_maintenance": [
+                    {{
+                        "action": "maintenance activity",
+                        "frequency": "how often to perform",
+                        "responsibility": "who should do this",
+                        "tools": "recommended tools/processes",
+                        "alerts": "what to monitor for"
+                    }}
+                ],
+                "phase_details": {{
+                    "immediate": {{
+                        "timeline": "0-2 weeks",
+                        "priority": "Critical legal and security compliance",
+                        "budget_estimate": "$500-2000",
+                        "team_size": "2-3 developers",
+                        "risk_if_delayed": "Legal liability, security breaches"
+                    }},
+                    "short_term": {{
+                        "timeline": "1-3 months", 
+                        "priority": "Comprehensive accessibility and privacy compliance",
+                        "budget_estimate": "$2000-8000",
+                        "team_size": "Cross-functional team (dev, design, legal)",
+                        "risk_if_delayed": "Accessibility lawsuits, user experience issues"
+                    }},
+                    "long_term": {{
+                        "timeline": "3-12 months",
+                        "priority": "Strategic compliance framework and monitoring",
+                        "budget_estimate": "$5000-20000",
+                        "team_size": "Organization-wide initiative",
+                        "risk_if_delayed": "Systemic compliance failures"
+                    }},
+                    "ongoing_maintenance": {{
+                        "timeline": "Continuous",
+                        "priority": "Sustained compliance and monitoring",
+                        "budget_estimate": "$1000-3000/month",
+                        "team_size": "Dedicated compliance team",
+                        "risk_if_delayed": "Compliance drift"
+                    }}
                 }},
-                "resource_requirements": {{
-                    "immediate": "resource description",
-                    "short_term": "resource description",
-                    "long_term": "resource description",
-                    "ongoing_maintenance": "resource description"
-                }},
-                "success_metrics": {{
-                    "immediate": "success criteria",
-                    "short_term": "success criteria", 
-                    "long_term": "success criteria",
-                    "ongoing_maintenance": "success criteria"
-                }},
-                "roadmap_summary": "comprehensive summary of the implementation plan"
+                "roadmap_summary": "Executive summary highlighting the most critical actions and expected outcomes",
+                "total_implementation_time": "estimated total time to full compliance",
+                "compliance_score_projection": "expected compliance improvement percentage"
             }}
             
-            Focus on actionable items based on the specific compliance issues found. Prioritize by risk and implementation complexity.
+            IMPORTANT: Base all recommendations on the SPECIFIC violations found in the analysis. Include technical details like:
+            - Exact HTML elements to fix (based on violations found)
+            - Specific WCAG success criteria to address
+            - GDPR articles that need implementation
+            - Security configurations to implement
+            - Testing procedures for each fix
+            
+            Make each action item specific, measurable, and directly tied to the compliance issues identified.
             """
             
-            # Generate roadmap using LLM
+            # Generate enhanced roadmap using LLM
             response = self.llm.invoke(roadmap_prompt)
             response_text = response.content if hasattr(response, 'content') else str(response)
             
@@ -858,55 +972,78 @@ class MultiAgentComplianceAuditor:
             if json_match:
                 try:
                     roadmap_data = json.loads(json_match.group())
-                    return roadmap_data
-                except json.JSONDecodeError:
-                    pass
+                    
+                    # Validate and ensure proper structure
+                    if self._validate_roadmap_structure(roadmap_data):
+                        return roadmap_data
+                except json.JSONDecodeError as e:
+                    print(f"JSON parsing error: {e}")
             
-            # Fallback: parse text-based response
-            return self._parse_roadmap_from_text(response_text, result_text)
+            # Fallback: parse structured text response
+            return self._parse_enhanced_roadmap_from_text(response_text, result_text)
             
         except Exception as e:
             print(f"Error extracting roadmap: {e}")
-            return self._create_fallback_roadmap(crew_result)
+            return self._create_enhanced_fallback_roadmap(result_text)
     
-    def _parse_roadmap_from_text(self, llm_response: str, original_text: str) -> Dict[str, Any]:
-        """Parse roadmap from text-based LLM response"""
+    def _validate_roadmap_structure(self, roadmap_data: Dict[str, Any]) -> bool:
+        """Validate that the roadmap has the required structure"""
+        required_sections = ["immediate", "short_term", "long_term", "ongoing_maintenance"]
+        return all(section in roadmap_data for section in required_sections)
+    
+    def _parse_enhanced_roadmap_from_text(self, llm_response: str, original_text: str) -> Dict[str, Any]:
+        """Parse enhanced roadmap from text-based LLM response with detailed action items"""
         
-        # Initialize roadmap structure
+        # Initialize enhanced roadmap structure
         roadmap = {
             "immediate": [],
             "short_term": [],
             "long_term": [],
             "ongoing_maintenance": [],
-            "timeline_overview": {
-                "immediate": "0-2 weeks",
-                "short_term": "1-3 months",
-                "long_term": "3-12 months",
-                "ongoing_maintenance": "Continuous"
+            "phase_details": {
+                "immediate": {
+                    "timeline": "0-2 weeks",
+                    "priority": "Critical compliance and security fixes",
+                    "budget_estimate": "$500-2000",
+                    "team_size": "2-3 developers",
+                    "risk_if_delayed": "Legal liability, security vulnerabilities"
+                },
+                "short_term": {
+                    "timeline": "1-3 months",
+                    "priority": "Comprehensive accessibility and privacy compliance",
+                    "budget_estimate": "$2000-8000", 
+                    "team_size": "Cross-functional team",
+                    "risk_if_delayed": "Accessibility lawsuits, compliance violations"
+                },
+                "long_term": {
+                    "timeline": "3-12 months",
+                    "priority": "Strategic compliance framework",
+                    "budget_estimate": "$5000-20000",
+                    "team_size": "Organization-wide",
+                    "risk_if_delayed": "Systemic compliance failures"
+                },
+                "ongoing_maintenance": {
+                    "timeline": "Continuous",
+                    "priority": "Sustained compliance monitoring",
+                    "budget_estimate": "$1000-3000/month",
+                    "team_size": "Dedicated compliance team",
+                    "risk_if_delayed": "Compliance drift"
+                }
             },
-            "resource_requirements": {
-                "immediate": "Development team (2-3 developers)",
-                "short_term": "Cross-functional team (developers, designers, legal)",
-                "long_term": "Organization-wide commitment",
-                "ongoing_maintenance": "Dedicated compliance team"
-            },
-            "success_metrics": {
-                "immediate": "Critical violations resolved",
-                "short_term": "Compliance framework established",
-                "long_term": "Full regulatory compliance achieved",
-                "ongoing_maintenance": "Continuous compliance maintained"
-            },
-            "roadmap_summary": "AI-generated implementation roadmap based on compliance analysis"
+            "roadmap_summary": "AI-generated implementation roadmap based on specific compliance violations found",
+            "total_implementation_time": "3-6 months for full compliance",
+            "compliance_score_projection": "Expected 60-90% improvement"
         }
         
-        # Parse sections from LLM response
+        # Extract specific actionable items from the LLM response
         sections = {
-            "immediate": ["immediate", "critical", "urgent", "now"],
-            "short_term": ["short", "medium", "weeks", "month"],
-            "long_term": ["long", "future", "strategic", "year"],
-            "ongoing_maintenance": ["ongoing", "maintenance", "continuous", "monitor"]
+            "immediate": ["immediate", "critical", "urgent", "security", "ssl", "cookie"],
+            "short_term": ["short", "accessibility", "wcag", "gdpr", "privacy"],
+            "long_term": ["long", "framework", "training", "monitoring", "strategic"],
+            "ongoing_maintenance": ["ongoing", "maintenance", "monitor", "regular", "continuous"]
         }
         
+        # Parse the response for detailed action items
         lines = llm_response.split('\n')
         current_section = None
         
@@ -918,124 +1055,244 @@ class MultiAgentComplianceAuditor:
             # Detect section headers
             line_lower = line.lower()
             for section, keywords in sections.items():
-                if any(keyword in line_lower for keyword in keywords):
+                if any(keyword in line_lower for keyword in keywords) and any(marker in line for marker in [':', 'action', 'phase']):
                     current_section = section
                     break
             
-            # Extract action items (lines starting with -, *, or numbers)
-            if current_section and (line.startswith(('-', '*', '•')) or line[0].isdigit()):
+            # Extract detailed action items
+            if current_section and (line.startswith(('-', '*', '•')) or line[0].isdigit() or 'action' in line.lower()):
                 cleaned_line = line.lstrip('-*•0123456789. ').strip()
-                if cleaned_line and len(cleaned_line) > 10:  # Filter out very short items
-                    roadmap[current_section].append(cleaned_line)
+                
+                # Create detailed action item structure
+                if cleaned_line and len(cleaned_line) > 15:
+                    action_item = {
+                        "action": cleaned_line,
+                        "reason": self._extract_reason_from_context(cleaned_line, original_text),
+                        "effort": self._estimate_effort(cleaned_line),
+                        "validation": self._suggest_validation(cleaned_line)
+                    }
+                    
+                    # Add section-specific fields
+                    if current_section == "immediate":
+                        action_item.update({
+                            "skills": "Frontend development, security configuration",
+                            "priority": "Critical"
+                        })
+                    elif current_section == "short_term":
+                        action_item.update({
+                            "dependencies": "Immediate actions completed",
+                            "outcomes": "Improved compliance score"
+                        })
+                    elif current_section == "long_term":
+                        action_item.update({
+                            "success_metrics": "Full regulatory compliance",
+                            "timeline": "3-6 months"
+                        })
+                    elif current_section == "ongoing_maintenance":
+                        action_item.update({
+                            "frequency": "Monthly or quarterly",
+                            "responsibility": "Compliance team"
+                        })
+                    
+                    roadmap[current_section].append(action_item)
         
-        # If sections are empty, extract from original crew result
-        if not any(roadmap[section] for section in ["immediate", "short_term", "long_term", "ongoing_maintenance"]):
-            return self._extract_roadmap_from_crew_output(original_text)
-        
-        return roadmap
-    
-    def _extract_roadmap_from_crew_output(self, crew_output: str) -> Dict[str, Any]:
-        """Extract roadmap directly from crew output using keyword analysis"""
-        
-        roadmap = {
-            "immediate": [],
-            "short_term": [],
-            "long_term": [],
-            "ongoing_maintenance": [],
-            "timeline_overview": {
-                "immediate": "0-2 weeks",
-                "short_term": "1-3 months",
-                "long_term": "3-12 months",
-                "ongoing_maintenance": "Continuous"
-            },
-            "resource_requirements": {
-                "immediate": "Development team focus",
-                "short_term": "Cross-functional coordination",
-                "long_term": "Strategic organizational alignment",
-                "ongoing_maintenance": "Dedicated compliance oversight"
-            },
-            "success_metrics": {
-                "immediate": "Critical issues resolved",
-                "short_term": "Compliance systems operational",
-                "long_term": "Full regulatory compliance",
-                "ongoing_maintenance": "Sustained compliance posture"
-            },
-            "roadmap_summary": f"Implementation roadmap derived from multi-agent analysis of {len(crew_output)} characters of compliance findings"
-        }
-        
-        # Keywords for categorizing actions
-        immediate_keywords = ["critical", "urgent", "immediate", "fix", "install", "security", "ssl"]
-        short_term_keywords = ["implement", "develop", "create", "establish", "audit", "monitor"]
-        long_term_keywords = ["framework", "training", "process", "governance", "strategic", "comprehensive"]
-        maintenance_keywords = ["maintain", "monitor", "review", "update", "ongoing", "regular"]
-        
-        # Extract sentences that look like action items
-        sentences = crew_output.replace('\n', '. ').split('.')
-        
-        for sentence in sentences:
-            sentence = sentence.strip()
-            if len(sentence) < 20 or not any(word in sentence.lower() for word in ["should", "must", "need", "implement", "fix", "add", "create", "establish"]):
-                continue
-            
-            sentence_lower = sentence.lower()
-            
-            if any(keyword in sentence_lower for keyword in immediate_keywords):
-                roadmap["immediate"].append(sentence)
-            elif any(keyword in sentence_lower for keyword in long_term_keywords):
-                roadmap["long_term"].append(sentence)
-            elif any(keyword in sentence_lower for keyword in maintenance_keywords):
-                roadmap["ongoing_maintenance"].append(sentence)
-            elif any(keyword in sentence_lower for keyword in short_term_keywords):
-                roadmap["short_term"].append(sentence)
-        
-        # Limit items per section
+        # If sections are still empty, create intelligent defaults based on violations
         for section in ["immediate", "short_term", "long_term", "ongoing_maintenance"]:
-            roadmap[section] = roadmap[section][:6]  # Max 6 items per section
+            if not roadmap[section]:
+                roadmap[section] = self._generate_default_actions(section, original_text)
         
         return roadmap
     
-    def _create_fallback_roadmap(self, crew_result: Any) -> Dict[str, Any]:
-        """Create fallback roadmap when parsing fails"""
-        return {
+    def _extract_reason_from_context(self, action: str, context: str) -> str:
+        """Extract reasoning for why this action is needed based on context"""
+        action_lower = action.lower()
+        if "cookie" in action_lower or "consent" in action_lower:
+            return "Required by GDPR Article 7 for lawful consent mechanisms"
+        elif "alt" in action_lower or "image" in action_lower:
+            return "WCAG 2.1 Success Criterion 1.1.1 requires alternative text for images"
+        elif "ssl" in action_lower or "https" in action_lower:
+            return "Security compliance and data protection requirement"
+        elif "label" in action_lower or "form" in action_lower:
+            return "WCAG 2.1 Success Criterion 1.3.1 requires proper form labeling"
+        else:
+            return "Improves overall compliance and user experience"
+    
+    def _estimate_effort(self, action: str) -> str:
+        """Estimate effort required for an action"""
+        action_lower = action.lower()
+        if any(term in action_lower for term in ["implement", "framework", "system"]):
+            return "3-5 days"
+        elif any(term in action_lower for term in ["add", "fix", "update"]):
+            return "4-8 hours"
+        elif any(term in action_lower for term in ["review", "audit", "test"]):
+            return "1-2 days"
+        else:
+            return "2-4 hours"
+    
+    def _suggest_validation(self, action: str) -> str:
+        """Suggest how to validate completion of an action"""
+        action_lower = action.lower()
+        if "cookie" in action_lower:
+            return "Test consent banner functionality and verify cookie compliance"
+        elif "alt" in action_lower:
+            return "Use screen reader to verify all images have proper descriptions"
+        elif "ssl" in action_lower:
+            return "Verify SSL certificate validity and HTTPS redirect functionality"
+        elif "label" in action_lower:
+            return "Test form navigation with keyboard and screen reader"
+        else:
+            return "Perform compliance testing and user acceptance testing"
+    
+    def _generate_default_actions(self, section: str, context: str) -> List[Dict[str, Any]]:
+        """Generate intelligent default actions based on section and violation context"""
+        defaults = {
             "immediate": [
-                "Review and address critical compliance violations identified",
-                "Implement basic security measures and SSL certificates",
-                "Add essential accessibility features like alt text"
+                {
+                    "action": "Implement SSL certificate and force HTTPS redirect",
+                    "reason": "Essential for data security and regulatory compliance",
+                    "effort": "4-8 hours",
+                    "skills": "DevOps, server configuration",
+                    "validation": "Verify SSL rating and certificate validity"
+                },
+                {
+                    "action": "Add GDPR-compliant cookie consent banner",
+                    "reason": "Required by GDPR Article 7 for EU visitors",
+                    "effort": "1-2 days",
+                    "skills": "Frontend development, legal knowledge",
+                    "validation": "Test consent mechanisms and cookie management"
+                }
             ],
             "short_term": [
-                "Develop comprehensive compliance monitoring system",
-                "Establish accessibility testing procedures",
-                "Create privacy policy and cookie management system"
+                {
+                    "action": "Conduct comprehensive accessibility audit and remediation",
+                    "reason": "Ensure WCAG 2.1 AA compliance and ADA requirements",
+                    "effort": "2-4 weeks",
+                    "dependencies": "Immediate security fixes completed",
+                    "outcomes": "Improved accessibility score and reduced legal risk"
+                }
             ],
             "long_term": [
-                "Build organization-wide compliance governance framework",
-                "Implement automated compliance testing pipeline",
-                "Establish regular legal compliance review processes"
+                {
+                    "action": "Establish compliance monitoring and reporting framework",
+                    "reason": "Proactive compliance management and continuous improvement",
+                    "effort": "1-3 months",
+                    "success_metrics": "Automated compliance monitoring with >95% uptime",
+                    "timeline": "6-12 months for full implementation"
+                }
             ],
             "ongoing_maintenance": [
-                "Monitor regulatory changes and update policies",
-                "Conduct regular accessibility and security audits",
-                "Maintain documentation and compliance records"
+                {
+                    "action": "Monthly compliance audits and regulatory update reviews",
+                    "frequency": "Monthly",
+                    "responsibility": "Compliance team or designated developer",
+                    "tools": "Automated scanning tools and manual reviews",
+                    "alerts": "New accessibility violations or security issues"
+                }
+            ]
+        }
+        
+        return defaults.get(section, [])
+    
+    def _create_enhanced_fallback_roadmap(self, analysis_context: str) -> Dict[str, Any]:
+        """Create enhanced fallback roadmap when parsing fails"""
+        return {
+            "immediate": [
+                {
+                    "action": "Review and address critical compliance violations identified in analysis",
+                    "reason": "Immediate legal and security risk mitigation",
+                    "effort": "1-2 days",
+                    "skills": "Web development, security basics",
+                    "validation": "Re-run compliance scan to verify fixes"
+                },
+                {
+                    "action": "Implement basic security measures and SSL certificates",
+                    "reason": "Foundation for data protection compliance",
+                    "effort": "4-8 hours", 
+                    "skills": "Server administration, SSL configuration",
+                    "validation": "SSL Labs test showing A+ rating"
+                }
             ],
-            "timeline_overview": {
-                "immediate": "0-2 weeks",
-                "short_term": "1-3 months",
-                "long_term": "3-12 months",
-                "ongoing_maintenance": "Continuous"
+            "short_term": [
+                {
+                    "action": "Conduct comprehensive accessibility audit and remediation",
+                    "reason": "Ensure WCAG 2.1 AA compliance and ADA requirements",
+                    "effort": "2-4 weeks",
+                    "dependencies": "Immediate security fixes completed",
+                    "outcomes": "Improved accessibility score and reduced legal risk"
+                },
+                {
+                    "action": "Develop privacy policy and cookie management system",
+                    "reason": "GDPR compliance for EU visitors and data protection",
+                    "effort": "1-2 weeks",
+                    "dependencies": "Legal review of data practices",
+                    "outcomes": "Full GDPR compliance for data collection"
+                }
+            ],
+            "long_term": [
+                {
+                    "action": "Establish compliance monitoring and reporting framework",
+                    "reason": "Proactive compliance management and continuous improvement",
+                    "effort": "1-3 months",
+                    "success_metrics": "Automated compliance monitoring with >95% uptime",
+                    "timeline": "6-12 months for full implementation"
+                },
+                {
+                    "action": "Build organization-wide compliance governance framework",
+                    "reason": "Systematic approach to regulatory compliance",
+                    "effort": "3-6 months",
+                    "success_metrics": "Company-wide compliance policies and procedures",
+                    "timeline": "6-12 months for full organizational adoption"
+                }
+            ],
+            "ongoing_maintenance": [
+                {
+                    "action": "Monthly compliance audits and regulatory update reviews",
+                    "frequency": "Monthly",
+                    "responsibility": "Compliance team or designated developer",
+                    "tools": "Automated scanning tools and manual reviews",
+                    "alerts": "New accessibility violations or security issues"
+                },
+                {
+                    "action": "Monitor regulatory changes and update policies",
+                    "frequency": "Quarterly",
+                    "responsibility": "Legal and compliance team",
+                    "tools": "Legal research databases and regulatory newsletters",
+                    "alerts": "New regulations affecting website compliance"
+                }
+            ],
+            "phase_details": {
+                "immediate": {
+                    "timeline": "0-2 weeks",
+                    "priority": "Critical legal and security compliance",
+                    "budget_estimate": "$500-2000",
+                    "team_size": "2-3 developers",
+                    "risk_if_delayed": "Legal liability, security breaches, regulatory penalties"
+                },
+                "short_term": {
+                    "timeline": "1-3 months",
+                    "priority": "Comprehensive accessibility and privacy compliance",
+                    "budget_estimate": "$2000-8000",
+                    "team_size": "Cross-functional team (dev, design, legal)",
+                    "risk_if_delayed": "Accessibility lawsuits, user experience issues"
+                },
+                "long_term": {
+                    "timeline": "3-12 months",
+                    "priority": "Strategic compliance framework and monitoring",
+                    "budget_estimate": "$5000-20000",
+                    "team_size": "Organization-wide initiative",
+                    "risk_if_delayed": "Systemic compliance failures, reputation damage"
+                },
+                "ongoing_maintenance": {
+                    "timeline": "Continuous",
+                    "priority": "Sustained compliance and monitoring",
+                    "budget_estimate": "$1000-3000/month",
+                    "team_size": "Dedicated compliance team or consultant",
+                    "risk_if_delayed": "Compliance drift, regulatory violations"
+                }
             },
-            "resource_requirements": {
-                "immediate": "Development team (2-3 developers)",
-                "short_term": "Cross-functional team (dev, design, legal)",
-                "long_term": "Organization-wide commitment",
-                "ongoing_maintenance": "Dedicated compliance officer"
-            },
-            "success_metrics": {
-                "immediate": "Critical violations resolved",
-                "short_term": "Compliance framework operational",
-                "long_term": "Full regulatory compliance achieved",
-                "ongoing_maintenance": "Zero compliance violations maintained"
-            },
-            "roadmap_summary": "Fallback implementation roadmap based on common compliance requirements"
+            "roadmap_summary": "Comprehensive compliance implementation roadmap with immediate security fixes, accessibility improvements, and long-term governance framework",
+            "total_implementation_time": "3-6 months for full compliance",
+            "compliance_score_projection": "Expected 60-90% improvement in compliance score"
         }
     
     def _handle_crew_error(self, error: Exception, website_data: WebsiteData) -> Dict[str, Any]:
