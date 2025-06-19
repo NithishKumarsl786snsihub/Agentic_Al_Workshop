@@ -5,10 +5,10 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 
 from crewai import Agent, Task, Crew, Process
-from crewai_tools import DuckDuckGoSearchRun, FileReadTool, DirectoryReadTool
+# from crewai_tools import DuckDuckGoSearchRun, FileReadTool, DirectoryReadTool  # Commented out due to dependency conflicts
 from langchain_google_genai import ChatGoogleGenerativeAI
-import chromadb
-from chromadb import Settings
+# import chromadb  # Commented out due to dependency conflicts
+# from chromadb import Settings
 
 from api.models import WebsiteData, ComplianceResults, ComplianceIssue, SeverityLevel, ComplianceCategory
 from core.config import settings
@@ -17,6 +17,13 @@ from core.config import settings
 from .compliance_scanner import ComplianceScanner
 from .issue_mapper import IssueMapper  
 from .remediation_advisor import RemediationAdvisor
+
+
+# Simple fallback implementations for missing tools
+class SimpleSearchTool:
+    """Simple search tool fallback"""
+    def search(self, query: str) -> str:
+        return f"Search results for: {query} (Note: Real search functionality requires crewai_tools)"
 
 
 class MultiAgentComplianceAuditor:
@@ -36,17 +43,19 @@ class MultiAgentComplianceAuditor:
             temperature=0.1
         )
         
-        # Initialize ChromaDB for RAG
+        # Initialize ChromaDB for RAG (fallback if not available)
         try:
-            self.chroma_client = chromadb.PersistentClient(
-                path=settings.CHROMA_DB_PATH,
-                settings=Settings(anonymized_telemetry=False)
-            )
+            # self.chroma_client = chromadb.PersistentClient(
+            #     path=settings.CHROMA_DB_PATH,
+            #     settings=Settings(anonymized_telemetry=False)
+            # )
+            self.chroma_client = None  # Disabled due to dependency conflicts
         except Exception:
             self.chroma_client = None
         
-        # Initialize tools
-        self.search_tool = DuckDuckGoSearchRun()
+        # Initialize tools (fallback implementations)
+        # self.search_tool = DuckDuckGoSearchRun()
+        self.search_tool = SimpleSearchTool()
         
         # Initialize actual agent implementations (REAL FUNCTIONALITY)
         self.compliance_scanner_impl = ComplianceScanner()

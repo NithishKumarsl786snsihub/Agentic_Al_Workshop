@@ -24,8 +24,14 @@ langchain-google-genai>=1.0.0,<2.0.0
 # Search tools
 duckduckgo-search>=5.0.0,<6.0.0
 
-# CrewAI (compatible versions)
+# CrewAI (compatible versions) - Install these manually if needed
 crewai>=0.28.8,<1.0.0
 
-# Alternative light vector storage (instead of ChromaDB)
-faiss-cpu>=1.7.0 
+# Optional packages (install if Visual C++ Build Tools are available)
+# chromadb>=0.4.22,<1.0.0
+
+# Alternative light vector storage (if ChromaDB fails)
+faiss-cpu>=1.7.0
+
+# Alternative to embedchain - use older compatible version
+# embedchain==0.0.73 
