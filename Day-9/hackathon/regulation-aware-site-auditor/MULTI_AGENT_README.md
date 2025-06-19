@@ -1,4 +1,6 @@
-# 🤖 Multi-Agent Compliance Auditor
+# 🔍 Regulation Aware Site Auditor  
+
+A full-stack application that performs comprehensive website compliance auditing for GDPR, WCAG/ADA accessibility, SEO, and security standards using AI-powered analysis.
 
 ![Application Screenshot](frontend/public/localhost_3000_.png)
 
