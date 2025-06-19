@@ -1,6 +1,6 @@
 # 🤖 Multi-Agent Compliance Auditor
 
-![Application Screenshot](C:\Users\Lenovo\Downloads\regulation-aware-site-auditor\frontend\public\localhost_3000_.png)
+![Application Screenshot](C:\Users\HP\Downloads\Agentic_Al_Workshop\Day-9\hackathon\regulation-aware-site-auditor\frontend\public\localhost_3000_.png)
 
 A sophisticated AI-powered website compliance auditing system that uses **CrewAI** to orchestrate four specialized agents for comprehensive regulatory compliance analysis.
 
