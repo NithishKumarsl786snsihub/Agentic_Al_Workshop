@@ -29,3 +29,5 @@ crewai>=0.28.8,<1.0.0
 
 # Alternative light vector storage (instead of ChromaDB)
 faiss-cpu>=1.7.0 
+
+
