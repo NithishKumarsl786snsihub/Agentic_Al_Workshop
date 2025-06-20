@@ -1,247 +1,117 @@
-# Voice Website Generator Backend
+# Voice Website Generator - Backend
 
-A powerful Python backend powered by FastAPI, Gemini AI, and LangGraph agents for voice-controlled website generation and editing.
+An AI-powered backend service for generating and editing websites using voice commands and natural language processing.
 
-## 🚀 Features
+## 🎯 Purpose
 
-- **AI Website Generation**: Generate complete HTML websites from text prompts using Gemini AI
-- **Voice-Controlled Editing**: Edit websites using natural language voice commands
-- **Session Management**: Track user sessions with undo/redo functionality
-- **File Storage**: Local file system storage for generated websites
-- **Vector Search**: ChromaDB integration for semantic search across sessions
-- **RESTful API**: Complete REST API with automatic OpenAPI documentation
+This FastAPI backend serves as the intelligent engine that:
+- Converts natural language prompts into complete HTML websites
+- Processes voice-based editing commands to modify existing websites
+- Manages user sessions and website storage
+- Provides semantic search across generated content using vector embeddings
 
-## 🛠️ Tech Stack
+## 🛠️ Key Technologies
 
-- **FastAPI**: Modern, fast web framework for building APIs
-- **Gemini AI**: Google's generative AI for website generation and editing
-- **LangGraph**: Agent workflow management
-- **ChromaDB**: Vector database for session storage and search
-- **BeautifulSoup**: HTML parsing and validation
-- **Pydantic**: Data validation and settings management
+- **FastAPI** - High-performance API framework
+- **Gemini AI** - Google's generative AI for website creation
+- **LangGraph** - Agent workflow orchestration
+- **ChromaDB** - Vector database for semantic search
+- **BeautifulSoup** - HTML parsing and validation
+- **Pydantic** - Data validation and serialization
 
-## 📋 Prerequisites
+## 🚀 Quick Setup
 
-- Python 3.8 or higher
-- Gemini API key (from Google AI Studio)
-- Git
-
-## 🔧 Installation
-
-1. **Clone the repository** (if not already done):
+1. **Install dependencies**:
    ```bash
-   git clone <repository-url>
-   cd Day-10/Final\ Hackathon/backend
-   ```
-
-2. **Create virtual environment**:
-   ```bash
+   cd backend
    python -m venv venv
-   
-   # Windows
-   venv\Scripts\activate
-   
-   # macOS/Linux
-   source venv/bin/activate
-   ```
-
-3. **Install dependencies**:
-   ```bash
-   # Try main requirements (includes LangGraph)
+   venv\Scripts\activate  # Windows
+   # source venv/bin/activate  # macOS/Linux
    pip install -r requirements.txt
-   
-   # If you get dependency conflicts, use simplified version:
-   pip install -r requirements_simple.txt
    ```
 
-4. **Set up environment variables**:
+2. **Configure environment**:
    ```bash
    cp env_example .env
-   ```
-   
-   Edit `.env` file and configure your settings:
-   ```
-   GEMINI_API_KEY=your_actual_gemini_api_key_here
-   AI_MODEL=gemini-1.5-flash
-   AI_TEMPERATURE=0.1
-   ENABLE_MULTI_AGENT=true
-   DEBUG=true
+   # Edit .env and add your GEMINI_API_KEY
    ```
 
-## 🚀 Quick Start
+3. **Start the server**:
+   ```bash
+   python start_server.py
+   # Or: uvicorn main:app --reload
+   ```
 
-### Option 1: Use the startup script (Recommended)
-```bash
-python start_server.py
+4. **Access API**: http://localhost:8000/docs
+
+## 🏗️ Architecture
+
+```mermaid
+graph TD
+    A[Frontend Voice Input] --> B[FastAPI Router]
+    B --> C{Request Type}
+    C -->|Generate| D[Website Generator Agent]
+    C -->|Edit| E[HTML Editor Agent]
+    C -->|Save| F[Session Manager]
+    
+    D --> G[Gemini AI]
+    E --> G
+    G --> H[LangGraph Processor]
+    H --> I[HTML Validator]
+    
+    F --> J[File Storage]
+    F --> K[ChromaDB Vector Store]
+    
+    I --> L[Response to Frontend]
+    J --> L
+    K --> L
 ```
 
-### Option 2: Direct start
-```bash
-uvicorn main:app --reload
-```
-
-The server will start on `http://localhost:8000`
-
-## 📚 API Documentation
-
-Once the server is running, visit:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-## 🔌 API Endpoints
-
-### Core Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | API info and health check |
-| POST | `/generate` | Generate website from prompt |
-| POST | `/edit` | Edit website with voice command |
-| POST | `/save` | Save website to file |
-| POST | `/undo` | Undo last change |
-| POST | `/redo` | Redo last undone change |
-
-### Session Management
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/sessions/{session_id}/history` | Get session history |
-| GET | `/download/{session_id}/{filename}` | Download saved HTML file |
-
-## 🎯 Usage Examples
-
-### Generate a Website
-```bash
-curl -X POST "http://localhost:8000/generate" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Create a modern portfolio website with dark theme"
-  }'
-```
-
-### Edit a Website
-```bash
-curl -X POST "http://localhost:8000/edit" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "html_content": "<html>...</html>",
-    "edit_command": "change header color to blue",
-    "session_id": "session-123"
-  }'
-```
-
-## 🏗️ Project Structure
+## 📁 Project Structure
 
 ```
 backend/
 ├── core/
-│   ├── __init__.py
-│   └── config.py          # Configuration management
+│   └── config.py           # Environment configuration
 ├── services/
-│   ├── __init__.py
-│   ├── website_generator.py    # AI website generation
-│   ├── html_editor.py          # Voice-controlled editing
-│   └── session_manager.py      # Session and file management
-├── user_files/            # Generated HTML files (created automatically)
-├── chroma_db/             # ChromaDB storage (created automatically)
-├── main.py                # FastAPI application
-├── start_server.py        # Startup script
-├── requirements.txt       # Python dependencies
-├── .env.example          # Environment variables template
-└── README.md             # This file
+│   ├── website_generator.py  # AI website generation
+│   ├── html_editor.py        # Voice-controlled editing
+│   └── session_manager.py    # Session & file management
+├── main.py                 # FastAPI application
+├── start_server.py         # Startup script
+└── requirements.txt        # Dependencies
 ```
 
-## 🧠 LangGraph Agents
+## 🔌 API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/generate` | POST | Generate website from prompt |
+| `/edit` | POST | Edit website with voice command |
+| `/save` | POST | Save website to file |
+| `/undo` | POST | Undo last change |
+| `/sessions/{id}/history` | GET | Get session history |
+
+## 🧠 Agent Workflow
 
 The system uses LangGraph agents for intelligent processing:
 
-1. **Website Generator Agent**: Analyzes prompts and generates HTML
-2. **HTML Editor Agent**: Processes voice commands and modifies HTML
-3. **Validation Agent**: Ensures generated HTML is valid and functional
+1. **Input Analysis** - Processes natural language commands
+2. **Content Generation** - Creates/modifies HTML using Gemini AI  
+3. **Validation** - Ensures HTML quality and functionality
+4. **Storage** - Saves to file system and vector database
 
-## 💾 Storage Systems
-
-### File Storage
-- Generated websites saved in `user_files/{session_id}/`
-- Organized by session for easy management
-- Automatic cleanup of old sessions
-
-### Vector Storage (ChromaDB)
-- Semantic search across all generated content
-- Session history and metadata storage
-- Fast similarity search for related websites
-
-## 🔧 Configuration
-
-Key configuration options in `.env`:
+## 🔧 Environment Variables
 
 ```env
-# Required
-GEMINI_API_KEY=your_api_key_here
-
-# Optional (with defaults)
+GEMINI_API_KEY=your_api_key_here  # Required
+AI_MODEL=gemini-1.5-flash
 HOST=localhost
 PORT=8000
-CORS_ORIGINS=http://localhost:3000
-USER_FILES_DIR=./user_files
-CHROMA_DB_DIR=./chroma_db
+DEBUG=true
 ```
 
-## 🐛 Troubleshooting
+## 📚 Documentation
 
-### Common Issues
-
-1. **"No module named 'google.generativeai'"**
-   - Solution: `pip install google-generativeai`
-
-2. **"Gemini API key not found"**
-   - Solution: Check your `.env` file and ensure `GEMINI_API_KEY` is set
-
-3. **"ChromaDB connection error"**
-   - Solution: Ensure write permissions in the project directory
-
-4. **"Import error: langgraph"**
-   - Solution: `pip install langgraph`
-
-### Getting Help
-
-1. Check the logs in the terminal
-2. Visit the API documentation at `/docs`
-3. Ensure all environment variables are set correctly
-
-## 🚀 Production Deployment
-
-For production deployment:
-
-1. **Use a production WSGI server**:
-   ```bash
-   pip install gunicorn
-   gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker
-   ```
-
-2. **Set environment variables**:
-   ```bash
-   export GEMINI_API_KEY=your_key
-   export HOST=0.0.0.0
-   export PORT=8000
-   ```
-
-3. **Use a reverse proxy** (nginx recommended)
-
-4. **Enable HTTPS** in production
-
-## 📄 License
-
-This project is part of the Agentic AI Workshop.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
----
-
-**Need help?** Check the API documentation at `http://localhost:8000/docs` when the server is running! 
+- **API Docs**: http://localhost:8000/docs
+- **Interactive Testing**: http://localhost:8000/redoc 

@@ -1,285 +1,181 @@
 # Voice Website Generator - Frontend
 
-A modern Next.js frontend for generating and editing websites using voice commands and AI. Built with React, TypeScript, and Tailwind CSS.
+A modern Next.js interface for generating and editing websites using voice commands and AI, featuring real-time preview and voice-controlled interactions.
 
-## 🚀 Features
+## 🎯 Purpose
 
-- **Voice Recognition**: Real-time speech-to-text using Web Speech API
-- **AI Website Generation**: Generate complete websites from text/voice prompts
-- **Live Voice Editing**: Edit websites in real-time using voice commands
-- **Visual Preview**: Live iframe preview with instant updates
-- **Session Management**: Local storage for session persistence
-- **Modern UI**: Custom design with AxiForma font and dark theme
-- **Responsive Design**: Works on desktop and mobile devices
+This React frontend provides an intuitive interface for:
+- **Voice-to-Website Generation** - Speak your ideas to create complete websites
+- **Live Voice Editing** - Modify websites in real-time using natural language
+- **Visual Preview** - Instant website preview with live updates
+- **Session Management** - Save, load, and manage your website projects
 
-## 🛠️ Tech Stack
+## 🛠️ Key Technologies
 
 - **Next.js 15** - React framework with App Router
-- **TypeScript** - Type safety and better developer experience
-- **Tailwind CSS v4** - Utility-first CSS framework
-- **Web Speech API** - Native browser speech recognition
-- **Lucide React** - Beautiful icon library
-- **Custom Hooks** - Reusable voice recognition and storage logic
+- **TypeScript** - Type-safe development
+- **Tailwind CSS v4** - Modern utility-first styling
+- **Web Speech API** - Native browser voice recognition
+- **Lucide React** - Beautiful iconography
+- **Custom Hooks** - Reusable voice and storage logic
 
-## 📋 Prerequisites
+## 🚀 Quick Setup
 
-- Node.js 18 or higher
-- npm or yarn package manager
-- Modern browser with Web Speech API support (Chrome, Edge, Firefox)
-- Backend API running (see backend README)
-
-## 🔧 Installation
-
-1. **Navigate to frontend directory**:
+1. **Install dependencies**:
    ```bash
-   cd Day-10/Final\ Hackathon/frontend
-   ```
-
-2. **Install dependencies**:
-   ```bash
+   cd frontend
    npm install
    ```
 
-3. **Create environment file**:
+2. **Configure environment**:
    ```bash
    cp env_local_example .env.local
+   # Edit .env.local and set NEXT_PUBLIC_API_URL=http://localhost:8000
    ```
 
-4. **Configure environment** (edit `.env.local`):
+3. **Start development server**:
+   ```bash
+   npm run dev
+   # Or use: ./start.sh (Unix) or start.bat (Windows)
    ```
-   NEXT_PUBLIC_API_URL=http://localhost:8000
-   NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
-   NEXT_PUBLIC_DEBUG=true
-   ```
 
-## 🚀 Quick Start
+4. **Access application**: http://localhost:3000
 
-### Option 1: Use startup scripts
+## 🌊 User Flow
 
-**Windows:**
-```bash
-start.bat
+```mermaid
+graph TD
+    A[User Arrives] --> B[Homepage: Website Generator]
+    B --> C{Input Method}
+    C -->|Voice| D[🎤 Voice Recognition]
+    C -->|Text| E[⌨️ Text Input]
+    
+    D --> F[Convert Speech to Text]
+    E --> F
+    F --> G[Send to Backend API]
+    G --> H[AI Generates Website]
+    H --> I[Display Generated Website]
+    
+    I --> J[Navigate to Editor]
+    J --> K[Live Preview + Voice Editing]
+    K --> L{Edit Commands}
+    L -->|Voice| M[🎤 Speak Changes]
+    L -->|Manual| N[✏️ Edit HTML Code]
+    
+    M --> O[Real-time Updates]
+    N --> O
+    O --> P[Save/Download Website]
 ```
 
-**macOS/Linux:**
-```bash
-chmod +x start.sh
-./start.sh
-```
-
-### Option 2: Manual start
-```bash
-npm run dev
-```
-
-The application will be available at `http://localhost:3000`
-
-## 📱 Pages Overview
+## 📱 Application Pages
 
 ### Page 1: Website Generator (`/`)
-- **Voice Input**: Click microphone button to speak your website idea
-- **Text Input**: Type your website description
-- **AI Generation**: Powered by Gemini AI through backend API
-- **Examples**: Quick-start templates for common website types
+- **Voice Input Button** - Click to activate speech recognition
+- **Text Input Field** - Type website descriptions manually  
+- **Quick Examples** - Pre-made prompts for inspiration
+- **Generated Preview** - Shows AI-created website
 
 ### Page 2: Live Editor (`/editor`)
-- **Live Preview**: Real-time iframe showing your website
-- **Voice Editing**: Speak commands to modify the website
-- **Code View**: Toggle to see/edit raw HTML
-- **Undo/Redo**: Full history management
-- **Save/Download**: Export your website
+- **Live Preview Panel** - Real-time iframe display
+- **Voice Edit Controls** - Microphone for voice commands
+- **Code Toggle** - Switch between visual and code view
+- **History Controls** - Undo/redo functionality
 
-## 🎤 Voice Commands
+## 🎤 Voice Command Examples
 
-### Generation Commands (Page 1)
-- "Create a modern portfolio website with dark theme"
-- "Build a landing page for a tech startup"
-- "Make a restaurant website with menu"
-- "Design a blog homepage"
+### Generation Commands
+```
+"Create a modern portfolio website with dark theme"
+"Build a restaurant website with online menu"
+"Design a tech startup landing page"
+"Make a personal blog homepage"
+```
 
-### Editing Commands (Page 2)
-- "Change header color to blue"
-- "Make the text bigger"
-- "Add a contact form"
-- "Center the content"
-- "Add animations to the buttons"
-- "Make it more responsive"
+### Editing Commands
+```
+"Change the header color to blue"
+"Make the text larger and center it"
+"Add a contact form at the bottom"
+"Make the buttons more rounded"
+"Add animations to the navigation"
+```
 
-## 🏗️ Project Structure
+## 📁 Project Structure
 
 ```
 frontend/
-├── public/                 # Static assets
 ├── src/
-│   ├── app/               # Next.js App Router pages
-│   │   ├── editor/        # Page 2: Live editor
-│   │   │   └── page.tsx
-│   │   ├── globals.css    # Global styles and CSS variables
-│   │   ├── layout.tsx     # Root layout
-│   │   └── page.tsx       # Page 1: Generator
-│   ├── components/        # Reusable React components
-│   │   └── VoiceButton.tsx
-│   ├── hooks/             # Custom React hooks
-│   │   ├── useVoiceRecognition.ts
-│   │   └── useSessionStorage.ts
-│   └── services/          # API and external services
-│       └── api.ts
-├── .env.local.example     # Environment template
-├── start.bat              # Windows startup script
-├── start.sh               # Unix startup script
-└── README.md              # This file
+│   ├── app/
+│   │   ├── page.tsx          # Homepage (Generator)
+│   │   ├── editor/
+│   │   │   └── page.tsx      # Live Editor
+│   │   ├── layout.tsx        # App layout
+│   │   └── globals.css       # Global styles
+│   ├── components/
+│   │   ├── VoiceButton.tsx   # Voice recognition UI
+│   │   ├── ClientOnly.tsx    # Client-side rendering
+│   │   └── IntelligentResponse.tsx
+│   ├── hooks/
+│   │   ├── useVoiceRecognition.ts  # Voice API integration
+│   │   └── useSessionStorage.ts    # Local storage management
+│   └── services/
+│       └── api.ts           # Backend API calls
+├── public/                  # Static assets
+└── .env.local.example      # Environment template
 ```
 
-## �� Design System
+## 🎨 Design System
 
-### Color Palette
-- **Rich Black** (`#001B1A`) - Background
-- **Dark Green** (`#032221`) - Alternate background, cards
-- **Bangladesh Green** (`#09624C`) - CTA buttons, highlights
-- **Mountain Meadow** (`#2CC5A9`) - Accent, hover states
-- **Caribbean Green** (`#00D881`) - Voice button, icons
-- **Anti-Flash White** (`#F1F7F6`) - Main text
+**Color Palette:**
+- **Rich Black** (`#001B1A`) - Primary background
+- **Bangladesh Green** (`#09624C`) - CTA buttons  
+- **Caribbean Green** (`#00D881`) - Voice button, accents
+- **Anti-Flash White** (`#F1F7F6`) - Text content
 
-### Typography
-- **Font Family**: Inter (fallback for AxiForma)
-- **Headings**: Semi Bold (600)
-- **Subheadings/Buttons**: Medium (500)
-- **Body Text**: Regular (400)
+**Typography:** Inter font family with responsive sizing
 
-## 🔌 API Integration
+## 🔌 Backend Integration
 
-The frontend communicates with the Python backend through these endpoints:
+The frontend communicates with the Python backend via REST API:
 
-- `POST /generate` - Generate website from prompt
-- `POST /edit` - Edit website with voice command
-- `POST /save` - Save website to file
-- `POST /undo` - Undo last change
-- `POST /redo` - Redo last undone change
+| API Call | Purpose | Page |
+|----------|---------|------|
+| `POST /generate` | Create website from prompt | Generator |
+| `POST /edit` | Modify website with voice | Editor |
+| `POST /save` | Save website file | Editor |
+| `POST /undo` | Undo last change | Editor |
 
-## 🌐 Browser Support
+## 🌐 Browser Compatibility
 
-### Web Speech API Support
+**Voice Recognition Support:**
 - ✅ Chrome/Chromium (recommended)
-- ✅ Microsoft Edge
-- ✅ Safari (limited)
+- ✅ Microsoft Edge  
+- ⚠️ Safari (limited functionality)
 - ⚠️ Firefox (experimental)
 
-### Fallback Behavior
-- Voice button becomes disabled if Speech API is not supported
-- Users can still use text input for all functionality
+**Fallback:** Text input available when voice recognition is unavailable
 
-## 🛠️ Development
-
-### Available Scripts
-
-```bash
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
-
-# Run linter
-npm run lint
-```
-
-### Custom Hooks
-
-#### `useVoiceRecognition`
-Handles Web Speech API integration:
-- Real-time speech recognition
-- Transcript management
-- Error handling
-- Browser compatibility
-
-#### `useSessionStorage`
-Manages local storage for sessions:
-- Session persistence
-- History tracking
-- Data synchronization
-
-## 🔧 Configuration
-
-### Environment Variables
+## 🔧 Environment Variables
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000  # Backend API URL
+NEXT_PUBLIC_DEBUG=true                     # Enable debug logging
 ```
 
-### Tailwind Configuration
-The project uses Tailwind CSS v4 with custom CSS variables for theming.
+## 🛠️ Development Scripts
 
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **Voice recognition not working**
-   - Ensure you're using a supported browser (Chrome recommended)
-   - Check microphone permissions
-   - Try HTTPS in production
-
-2. **API connection errors**
-   - Verify backend is running on correct port
-   - Check CORS configuration
-   - Confirm API URL in environment variables
-
-3. **Build errors**
-   - Clear node_modules: `rm -rf node_modules && npm install`
-   - Update Node.js to latest LTS version
-
-### Development Tips
-
-1. **Enable verbose logging**:
-   ```bash
-   npm run dev -- --verbose
-   ```
-
-2. **Check network requests** in browser DevTools
-
-3. **Test voice recognition** in browser console:
-   ```javascript
-   // Test if Speech Recognition is available
-   console.log('Speech Recognition:', window.SpeechRecognition || window.webkitSpeechRecognition);
-   ```
-
-## 🚀 Production Deployment
-
-### Build Optimization
 ```bash
-npm run build
-npm start
+npm run dev      # Start development server
+npm run build    # Build for production  
+npm run start    # Start production server
+npm run lint     # Run ESLint
 ```
 
-### Environment Setup
-- Set `NEXT_PUBLIC_API_URL` to production backend URL
-- Ensure HTTPS for voice recognition in production
-- Configure proper CORS on backend
+## 📚 Custom Hooks
 
-### Recommended Hosting
-- **Vercel** (recommended for Next.js)
-- **Netlify**
-- **AWS Amplify**
-- **Docker** with nginx
-
-## 📄 License
-
-This project is part of the Agentic AI Workshop.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+- **`useVoiceRecognition`** - Handles Web Speech API integration, error handling, and browser compatibility
+- **`useSessionStorage`** - Manages local storage for session persistence and website history
 
 ---
 
-**Need help?** 
-- Check browser console for error messages
-- Ensure backend API is running
-- Test voice recognition permissions
-- Review network requests in DevTools
+**Need Help?** Ensure the backend is running at `http://localhost:8000` and check browser console for voice recognition permissions.
