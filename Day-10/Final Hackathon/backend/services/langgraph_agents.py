@@ -671,7 +671,7 @@ class LangGraphWebsiteEditor:
         graph.add_node("unsafe_edit", lambda state: {**state, "response_generated": "Cannot safely perform this edit."})
         
         # Add edges
-        graph.add_edge("voice_to_text", "intent_router")
+        graph.add_edge("voice_to_text", "intent_routetr")
         graph.add_conditional_edges(
             "intent_router",
             should_clarify,
