@@ -13,7 +13,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="font-axiforma-regular bg-[var(--color-bg)] text-[var(--color-text)] antialiased">
+      <body 
+        className="font-axiforma-regular bg-[var(--color-bg)] text-[var(--color-text)] antialiased"
+        suppressHydrationWarning={true}
+      >
         {children}
       </body>
     </html>

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { VoiceButton } from '../components/VoiceButton';
+import { ClientOnly } from '../components/ClientOnly';
 import { apiService } from '../services/api';
 import { useSessionStorage } from '../hooks/useSessionStorage';
 
@@ -124,54 +125,54 @@ export default function HomePage() {
       )}
 
       {/* Header */}
-      <header className="p-6 border-b border-[var(--color-forest)]">
+      <header className="p-8 border-b border-[var(--color-border)] bg-[var(--color-surface)] backdrop-filter backdrop-blur-lg">
         <div className="max-w-4xl mx-auto">
-          <h1 className="font-axiforma-semibold text-3xl lg:text-4xl text-[var(--color-text)] flex items-center gap-3">
-            <Sparkles className="w-8 h-8 text-[var(--color-voice)]" />
+          <h1 className="font-semibold text-4xl lg:text-5xl text-[var(--color-text)] flex items-center gap-4 mb-3">
+            <Sparkles className="w-10 h-10 text-[var(--color-voice)] animate-pulse" />
             Voice Website Generator
           </h1>
-          <p className="font-axiforma-regular text-[var(--color-muted)] mt-2 text-lg">
-            Generate complete websites using AI and voice commands
+          <p className="font-medium text-[var(--color-muted)] text-lg leading-relaxed">
+            Generate complete websites using AI and voice commands with professional design
           </p>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-2xl">
+      <main className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-3xl">
           {/* Introduction Card */}
           <div className="card mb-8">
-            <h2 className="font-axiforma-semibold text-2xl text-[var(--color-text)] mb-4">
-              🎤 Create Your Website
+            <h2 className="font-semibold text-3xl text-[var(--color-text)] mb-6">
+              Create Your Website
             </h2>
-            <p className="font-axiforma-regular text-[var(--color-muted)] mb-6 leading-relaxed">
+            <p className="font-medium text-[var(--color-muted)] mb-8 leading-relaxed text-lg">
               Describe your dream website using voice or text. Our AI will generate a complete, 
               responsive website that you can then edit with voice commands in real-time.
             </p>
 
             {/* Input Section */}
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="relative">
                 <textarea
                   value={prompt}
                   onChange={handleTextChange}
                   onKeyPress={handleKeyPress}
                   placeholder="Describe your website... (e.g., 'Create a modern portfolio website with dark theme and animations')"
-                  className={`input-field w-full h-32 resize-none font-axiforma-medium ${
-                    isVoiceActive ? 'ring-2 ring-[var(--color-voice)]/50 bg-[var(--color-voice)]/5' : ''
+                  className={`input-field w-full h-40 resize-none font-medium text-base leading-relaxed ${
+                    isVoiceActive ? 'voice-input-active' : ''
                   }`}
                   disabled={isGenerating}
                   ref={promptRef}
                 />
                 
                 {/* Voice Button */}
-                <div className="absolute bottom-4 right-4">
-                                      <VoiceButton
-                      onTranscript={handleVoiceTranscript}
-                      onInterimTranscript={handleInterimTranscript}
-                      size="md"
-                      disabled={isGenerating}
-                    />
+                <div className="absolute bottom-5 right-5">
+                  <VoiceButton
+                    onTranscript={handleVoiceTranscript}
+                    onInterimTranscript={handleInterimTranscript}
+                    size="md"
+                    disabled={isGenerating}
+                  />
                 </div>
               </div>
 
@@ -179,16 +180,16 @@ export default function HomePage() {
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || !prompt.trim()}
-                className="btn-primary w-full py-4 font-axiforma-medium text-lg flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary w-full py-5 font-semibold text-lg flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl"
               >
                 {isGenerating ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-6 h-6 animate-spin" />
                     Generating Website...
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-5 h-5" />
+                    <Sparkles className="w-6 h-6" />
                     Generate Website
                   </>
                 )}
@@ -197,11 +198,11 @@ export default function HomePage() {
 
             {/* Error Message */}
             {error && (
-              <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <div className="mt-6 p-5 bg-gradient-to-r from-red-500/10 to-red-600/5 border border-red-500/20 rounded-xl flex items-start gap-4">
+                <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-axiforma-medium text-red-400">Error</p>
-                  <p className="font-axiforma-regular text-red-300 text-sm mt-1">{error}</p>
+                  <p className="font-semibold text-red-400 text-lg">Error</p>
+                  <p className="font-medium text-red-300 text-sm mt-2">{error}</p>
                 </div>
               </div>
             )}
@@ -209,10 +210,10 @@ export default function HomePage() {
 
           {/* Examples */}
           <div className="text-center">
-            <h3 className="font-axiforma-semibold text-lg text-[var(--color-text)] mb-4">
-              ✨ Try These Examples
+            <h3 className="font-semibold text-xl text-[var(--color-text)] mb-6">
+              Try These Examples
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
                 "Create a modern portfolio website with dark theme",
                 "Build a landing page for a tech startup with animations",
@@ -223,7 +224,7 @@ export default function HomePage() {
                   key={index}
                   onClick={() => setPrompt(example)}
                   disabled={isGenerating}
-                  className="p-3 bg-[var(--color-bg-alt)] hover:bg-[var(--color-pine)] border border-[var(--color-forest)] rounded-lg text-left font-axiforma-regular text-sm text-[var(--color-muted)] hover:text-[var(--color-text)] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-5 bg-[var(--color-surface)] hover:bg-[var(--color-glass)] border border-[var(--color-border)] rounded-xl text-left font-medium text-sm text-[var(--color-text)] hover:text-[var(--color-accent-hover)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed backdrop-filter backdrop-blur-lg hover:scale-[1.02] hover:shadow-lg"
                 >
                   {example}
                 </button>
@@ -234,9 +235,9 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="p-6 border-t border-[var(--color-forest)]">
+      <footer className="p-6 border-t border-[var(--color-border)] bg-[var(--color-surface)] backdrop-filter backdrop-blur-lg">
         <div className="max-w-4xl mx-auto text-center">
-          <p className="font-axiforma-regular text-[var(--color-muted)] text-sm">
+          <p className="font-medium text-[var(--color-muted)] text-sm">
             Powered by Gemini AI • Voice-controlled editing • Real-time preview
           </p>
         </div>

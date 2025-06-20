@@ -28,10 +28,16 @@ interface UseSessionStorageReturn {
 export const useSessionStorage = (): UseSessionStorageReturn => {
   const [currentSession, setCurrentSession] = useState<SessionData | null>(null);
   const [sessions, setSessions] = useState<SessionData[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
+  // Check if we're on the client side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Load sessions from localStorage on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isClient && typeof window !== 'undefined') {
       try {
         const storedSessions = localStorage.getItem('voice-website-sessions');
         const currentSessionId = localStorage.getItem('current-session-id');
@@ -51,29 +57,29 @@ export const useSessionStorage = (): UseSessionStorageReturn => {
         console.error('Error loading sessions from localStorage:', error);
       }
     }
-  }, []);
+  }, [isClient]);
 
   // Save sessions to localStorage whenever sessions change
   useEffect(() => {
-    if (typeof window !== 'undefined' && sessions.length > 0) {
+    if (isClient && typeof window !== 'undefined' && sessions.length > 0) {
       try {
         localStorage.setItem('voice-website-sessions', JSON.stringify(sessions));
       } catch (error) {
         console.error('Error saving sessions to localStorage:', error);
       }
     }
-  }, [sessions]);
+  }, [sessions, isClient]);
 
   // Save current session ID to localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined' && currentSession) {
+    if (isClient && typeof window !== 'undefined' && currentSession) {
       try {
         localStorage.setItem('current-session-id', currentSession.sessionId);
       } catch (error) {
         console.error('Error saving current session ID:', error);
       }
     }
-  }, [currentSession]);
+  }, [currentSession, isClient]);
 
   const saveSession = useCallback((sessionData: SessionData) => {
     setSessions(prevSessions => {

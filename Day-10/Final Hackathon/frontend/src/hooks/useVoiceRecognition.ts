@@ -101,14 +101,16 @@ export const useVoiceRecognition = (): UseVoiceRecognitionReturn => {
     try {
       setError(null);
       setTranscript('');
+      setInterimTranscript('');
+      setFinalTranscript('');
       recognitionRef.current.start();
       
-      // Auto-stop after 10 seconds of silence
+      // Auto-stop after 4 seconds of silence
       timeoutRef.current = setTimeout(() => {
         if (recognitionRef.current && isListening) {
           recognitionRef.current.stop();
         }
-      }, 10000);
+      }, 4000);
     } catch (err) {
       setError('Failed to start speech recognition');
     }

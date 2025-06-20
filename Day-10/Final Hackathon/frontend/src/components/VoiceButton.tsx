@@ -3,6 +3,7 @@
 import React from 'react';
 import { Mic, MicOff, Loader2 } from 'lucide-react';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
+import { ClientOnly } from './ClientOnly';
 import clsx from 'clsx';
 
 interface VoiceButtonProps {
@@ -13,7 +14,7 @@ interface VoiceButtonProps {
   disabled?: boolean;
 }
 
-export const VoiceButton: React.FC<VoiceButtonProps> = ({
+const VoiceButtonComponent: React.FC<VoiceButtonProps> = ({
   onTranscript,
   onInterimTranscript,
   className,
@@ -112,14 +113,22 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
           {error}
         </div>
       )}
-
-      {/* Live transcript */}
-      {transcript && isListening && (
-        <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-md max-w-xs">
-          <div className="text-xs text-gray-400 mb-1">Listening...</div>
-          <div className="font-medium">{transcript}</div>
-        </div>
-      )}
     </div>
+  );
+};
+
+export const VoiceButton: React.FC<VoiceButtonProps> = (props) => {
+  return (
+    <ClientOnly fallback={
+      <div className={clsx(
+        'rounded-full bg-gray-400 cursor-not-allowed flex items-center justify-center',
+        props.size === 'sm' ? 'w-8 h-8 p-2' : props.size === 'lg' ? 'w-16 h-16 p-4' : 'w-12 h-12 p-3',
+        props.className
+      )}>
+        <MicOff className={props.size === 'sm' ? 'w-4 h-4' : props.size === 'lg' ? 'w-8 h-8' : 'w-6 h-6'} />
+      </div>
+    }>
+      <VoiceButtonComponent {...props} />
+    </ClientOnly>
   );
 }; 
