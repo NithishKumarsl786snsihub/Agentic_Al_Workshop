@@ -21,9 +21,104 @@ The **Agentic AI-Based Voice-Based Site Customizer** is a revolutionary multi-ag
 
 ---
 
-## 🔁 Agentic Workflow
+## 🏗️ System Architecture
 
-Our system employs a sophisticated 5-agent architecture that processes voice commands through a coordinated workflow:
+### 🎯 Unified Architecture Overview
+
+```mermaid
+graph TB
+    subgraph "🌐 Frontend Layer (Next.js)"
+        A[🎤 Voice Input Interface]
+        B[📱 React Components]
+        C[💡 Custom Hooks]
+        D[🖥️ Website Editor]
+        E[📊 Session Management]
+    end
+    
+    subgraph "🔗 Communication Layer"
+        F[🌐 REST APIs]
+        G[⚡ WebSocket]
+        H[🔄 Real-time Sync]
+    end
+    
+    subgraph "🎛️ Backend Layer (FastAPI)"
+        I[🎙️ Voice-to-Text Agent]
+        J[🧭 Semantic Intent Router]
+        K[✏️ Contextual Editor Agent]
+        L[📚 RAG-Enabled Response Agent]
+        M[✅ Validation Agent]
+    end
+    
+    subgraph "💾 Data Layer"
+        N[📊 ChromaDB Vector Store]
+        O[💾 Session Storage]
+        P[📁 File System]
+        Q[🧠 Memory Module]
+    end
+    
+    subgraph "🤖 AI Services"
+        R[🤖 Gemini Pro API]
+        S[🎯 Web Speech API]
+        T[🔍 Vector Embeddings]
+    end
+    
+    A --> F
+    B --> G
+    D --> H
+    E --> F
+    
+    F --> I
+    G --> J
+    H --> K
+    
+    I --> R
+    I --> S
+    J --> R
+    K --> R
+    L --> R
+    L --> N
+    M --> R
+    
+    I --> Q
+    J --> Q
+    K --> Q
+    L --> Q
+    M --> Q
+    
+    K --> O
+    K --> P
+    L --> N
+    M --> O
+    
+    N --> T
+    O --> P
+```
+
+### 🎨 Technology Stack
+
+#### **Frontend Stack**
+- **Framework:** Next.js 14 with TypeScript
+- **Styling:** Tailwind CSS
+- **Voice Processing:** Web Speech API
+- **State Management:** React Hooks + Session Storage
+- **Build Tool:** Webpack (via Next.js)
+
+#### **Backend Stack**
+- **Framework:** FastAPI with Python 3.11
+- **AI Integration:** Google Gemini Pro API
+- **Vector Database:** ChromaDB
+- **Agent Framework:** Custom LangChain Implementation
+- **Server:** Uvicorn ASGI
+
+#### **AI & ML Components**
+- **LLM:** Google Gemini Pro
+- **Voice Recognition:** Web Speech API / OpenAI Whisper
+- **Vector Embeddings:** Sentence Transformers
+- **Knowledge Base:** RAG with ChromaDB
+
+---
+
+## 🔁 Agentic Workflow
 
 ### 🎯 Core Agents Overview
 
@@ -87,7 +182,7 @@ graph TD
 
 ---
 
-## 🏗️ Agent Design & Communication
+## 🎛️ Agent Design & Communication
 
 ### 🎛️ Centralized Orchestration
 ```python
@@ -194,37 +289,6 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 - **Backend:** AWS/GCP/Azure for API services
 - **Database:** Managed vector database services
 - **CDN:** Global content delivery for optimal performance
-
----
-
-## 🧭 Visual Diagrams
-
-### 📊 System Architecture Diagram
-![Agentic Flow Diagram](./assets/agentic-flow-diagram.png)
-
-### 🔄 Agent Communication Flow
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant V as Voice Agent
-    participant R as Router Agent
-    participant E as Editor Agent
-    participant RAG as RAG Agent
-    participant Val as Validator
-    participant UI as Frontend
-    
-    U->>V: Voice Command
-    V->>R: Transcribed Text
-    R->>E: Intent + Context
-    R->>RAG: Enhancement Request
-    E->>Val: Modified HTML/CSS
-    RAG->>Val: Enhanced Response
-    Val->>UI: Validated Result
-    UI->>U: Updated Website
-```
-
-### 🏗️ Technical Architecture
-![Technical Architecture](./assets/technical-architecture.png)
 
 ---
 
@@ -413,6 +477,217 @@ npm run dev
 ```bash
 # Use simplified dependencies if needed
 pip install -r requirements_simple.txt
+```
+
+---
+
+## 🏗️ Detailed Architecture Flows
+
+### 🎨 Frontend Architecture Flow
+
+```mermaid
+graph TB
+    subgraph "🌐 Frontend Application (Next.js)"
+        A[🏠 Homepage] --> B[🎤 Voice Input Component]
+        B --> C[📱 Custom Hooks]
+        C --> D[🎙️ useVoiceRecognition]
+        C --> E[💾 useSessionStorage]
+        
+        F[🖥️ Editor Page] --> G[✏️ Website Editor]
+        G --> H[🔄 Real-time Preview]
+        H --> I[💾 Session Management]
+        
+        J[🤖 AI Response Component] --> K[💬 Chat Interface]
+        K --> L[🎯 Intelligent Suggestions]
+        
+        M[📱 Client Components] --> N[🔗 API Integration]
+        N --> O[⚡ Service Layer]
+        
+        style A fill:#e1f5fe
+        style F fill:#e8f5e8
+        style J fill:#fff3e0
+        style M fill:#f3e5f5
+    end
+    
+    subgraph "🔗 Frontend Services"
+        P[🌐 API Client]
+        Q[📊 Data Transformation]
+        R[🔄 State Management]
+        S[⚡ WebSocket Handler]
+    end
+    
+    subgraph "🎯 External APIs"
+        T[🤖 Backend APIs]
+        U[🎙️ Web Speech API]
+        V[📊 Browser Storage]
+    end
+    
+    D --> P
+    E --> V
+    G --> P
+    I --> V
+    K --> P
+    N --> P
+    
+    P --> Q
+    Q --> R
+    R --> S
+    
+    P --> T
+    D --> U
+    E --> V
+    S --> T
+```
+
+### 🎛️ Backend Architecture Flow
+
+```mermaid
+graph TB
+    subgraph "🔌 API Layer"
+        A[📡 FastAPI Server]
+        B[🛣️ Route Handlers]
+        C[🔐 Middleware]
+        D[📊 Request Validation]
+    end
+    
+    subgraph "🤖 Agent Orchestration Layer"
+        E[🎛️ Agent Coordinator]
+        F[🎙️ Voice-to-Text Agent]
+        G[🧭 Semantic Router Agent]
+        H[✏️ Contextual Editor Agent]
+        I[📚 RAG Response Agent]
+        J[✅ Validation Agent]
+    end
+    
+    subgraph "🧠 Intelligence Layer"
+        K[🤖 Gemini Pro API]
+        L[🎯 Intent Processing]
+        M[🔍 Context Analysis]
+        N[💡 Code Generation]
+        O[🎨 Design Suggestions]
+    end
+    
+    subgraph "💾 Data & Storage Layer"
+        P[📊 ChromaDB Vector Store]
+        Q[🗃️ Session Storage]
+        R[📁 File System]
+        S[🧠 Memory Module]
+        T[🔍 Vector Embeddings]
+    end
+    
+    subgraph "🔧 Service Layer"
+        U[🌐 Website Generator]
+        V[✏️ HTML Editor]
+        W[🤖 AI Response Service]
+        X[📊 Session Manager]
+        Y[🔍 RAG Service]
+        Z[📊 Vector Store Service]
+    end
+    
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    
+    E --> F
+    E --> G
+    E --> H
+    E --> I
+    E --> J
+    
+    F --> K
+    G --> K
+    H --> K
+    I --> K
+    J --> K
+    
+    G --> L
+    H --> M
+    I --> N
+    J --> O
+    
+    F --> S
+    G --> S
+    H --> S
+    I --> S
+    J --> S
+    
+    H --> U
+    I --> V
+    J --> W
+    E --> X
+    I --> Y
+    P --> Z
+    
+    U --> R
+    V --> R
+    W --> Q
+    X --> Q
+    Y --> P
+    Z --> T
+    
+    style A fill:#e3f2fd
+    style E fill:#e8f5e8
+    style K fill:#fff3e0
+    style P fill:#fce4ec
+    style U fill:#f1f8e9
+```
+
+### 🔄 Complete Data Flow Sequence
+
+```mermaid
+sequenceDiagram
+    participant User as 👤 User
+    participant FE as 🌐 Frontend
+    participant API as 📡 API Gateway
+    participant Coord as 🎛️ Coordinator
+    participant VoiceAgent as 🎙️ Voice Agent
+    participant RouterAgent as 🧭 Router Agent
+    participant EditorAgent as ✏️ Editor Agent
+    participant RAGAgent as 📚 RAG Agent
+    participant ValidatorAgent as ✅ Validator
+    participant Gemini as 🤖 Gemini API
+    participant VectorDB as 📊 Vector DB
+    participant Storage as 💾 Storage
+    
+    User->>FE: Voice Command
+    FE->>API: POST /api/process-voice
+    API->>Coord: Process Request
+    
+    Coord->>VoiceAgent: Transcribe Audio
+    VoiceAgent->>Gemini: Speech-to-Text
+    Gemini-->>VoiceAgent: Transcribed Text
+    VoiceAgent-->>Coord: Text Response
+    
+    Coord->>RouterAgent: Analyze Intent
+    RouterAgent->>Gemini: Intent Analysis
+    Gemini-->>RouterAgent: Intent Classification
+    RouterAgent-->>Coord: Routing Decision
+    
+    Coord->>EditorAgent: Execute Modifications
+    EditorAgent->>Gemini: Generate Code
+    Gemini-->>EditorAgent: HTML/CSS Code
+    EditorAgent->>Storage: Save Changes
+    Storage-->>EditorAgent: Success
+    EditorAgent-->>Coord: Modification Results
+    
+    Coord->>RAGAgent: Enhance Response
+    RAGAgent->>VectorDB: Query Knowledge Base
+    VectorDB-->>RAGAgent: Relevant Context
+    RAGAgent->>Gemini: Generate Enhanced Response
+    Gemini-->>RAGAgent: Enhanced Content
+    RAGAgent-->>Coord: Enriched Response
+    
+    Coord->>ValidatorAgent: Validate Output
+    ValidatorAgent->>Gemini: Quality Check
+    Gemini-->>ValidatorAgent: Validation Results
+    ValidatorAgent->>Storage: Update if Needed
+    Storage-->>ValidatorAgent: Success
+    ValidatorAgent-->>Coord: Final Validation
+    
+    Coord-->>API: Complete Response
+    API-->>FE: Updated Website Data
+    FE-->>User: Real-time Website Update
 ```
 
 ---
