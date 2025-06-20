@@ -34,7 +34,7 @@ export default function EditorPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
-  const [isFullscreen, setIsFullscreen] = useState(false);
+
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -404,6 +404,28 @@ export default function EditorPage() {
     setMessage({ type: 'success', text: 'Website downloaded successfully' });
   };
 
+  const handleOpenInNewTab = () => {
+    if (!htmlContent) return;
+
+    // Create a blob URL for the HTML content
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    
+    // Open in new tab
+    const newWindow = window.open(url, '_blank');
+    
+    // Clean up the URL after a delay to prevent memory leaks
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 100);
+    
+    if (newWindow) {
+      setMessage({ type: 'success', text: 'Website opened in new tab' });
+    } else {
+      setMessage({ type: 'error', text: 'Failed to open new tab. Please check popup blocker settings.' });
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -476,7 +498,6 @@ export default function EditorPage() {
   return (
     <div className={clsx(
       'min-h-screen bg-gradient-to-br from-[var(--color-bg)] to-[var(--color-bg-alt)] flex flex-col',
-      { 'fixed inset-0 z-50': isFullscreen }
     )}>
       {/* Professional IDE-Style Header */}
       <header className="ide-header">
@@ -671,15 +692,13 @@ export default function EditorPage() {
             <div className="traffic-light green"></div>
           </div>
           
-          {!isFullscreen && (
-            <button
-              onClick={() => router.push('/')}
-              className="back-button"
-              title="Back to Home"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            onClick={() => router.push('/')}
+            className="back-button"
+            title="Back to Home"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
           
           {/* Logo Section */}
           <div className="logo-section">
@@ -745,9 +764,9 @@ export default function EditorPage() {
 
           {/* Action Buttons */}
           <button
-            onClick={() => setIsFullscreen(!isFullscreen)}
+            onClick={handleOpenInNewTab}
             className="action-button"
-            title="Toggle Fullscreen"
+            title="Open Preview in New Tab"
           >
             <Maximize className="w-4 h-4" />
           </button>
