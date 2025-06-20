@@ -8,8 +8,12 @@ export const metadata: Metadata = {
     "Generate and edit websites using voice commands powered by AI. Create professional, responsive websites with modern design and real-time editing capabilities.",
   keywords: "AI website generator, voice commands, web development, responsive design, modern UI",
   authors: [{ name: "Voice Website Generator" }],
-  viewport: "width=device-width, initial-scale=1",
-  themeColor: "#09624C",
+}
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#00d885",
 }
 
 export default function RootLayout({

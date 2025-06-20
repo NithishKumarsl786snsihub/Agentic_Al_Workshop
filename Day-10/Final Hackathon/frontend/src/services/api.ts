@@ -19,11 +19,32 @@ export interface EditRequest {
   session_id: string;
 }
 
+export interface IntelligentResponse {
+  type: 'confirmation' | 'clarification';
+  message: string;
+  summary: string;
+  suggestions?: string[];
+  options?: string[];
+  follow_up_question?: string;
+  original_command?: string;
+  editable: boolean;
+  language: string;
+  voice_friendly: boolean;
+  metadata: {
+    intent?: string;
+    confidence?: number;
+    context_used?: boolean;
+    clarification_needed?: boolean;
+    error?: string;
+  };
+}
+
 export interface EditResponse {
   html_content: string;
   success: boolean;
   message: string;
   changes_made: string[];
+  intelligent_response?: IntelligentResponse;
 }
 
 export interface SaveRequest {

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Authentic Chinese Cuisine">
+<title>Jade Dragon Restaurant</title>
+<style>
+body {
+  font-family: 'Arial', sans-serif;
+  margin: 0;
+  background-color: #f8f0e3; /*light beige*/
+  color: #333;
+  line-height: 1.6;
+  transition: background-color 0.3s ease;
+}
+
+header {
+  background-color: #c2466b; /*maroon*/
+  color: white;
+  text-align: center;
+  padding: 20px 0;
+}
+
+header h1 {
+  font-size: 2.5em;
+  margin: 0;
+}
+
+nav {
+  background-color: #e6b8af; /*light maroon*/
+  padding: 10px 0;
+}
+
+nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: center;
+}
+
+nav li {
+  display: inline;
+  margin: 0 20px;
+}
+
+nav a {
+  text-decoration: none;
+  color: #333;
+  font-weight: bold;
+  transition: color 0.3s ease;
+}
+
+nav a:hover {
+  color: #c2466b;
+}
+
+section {
+  padding: 20px;
+}
+
+section h2 {
+  font-size: 2em;
+  margin-bottom: 10px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 10px;
+}
+
+.menu-item img {
+  width: 80px;
+  height: 80px;
+  margin-right: 20px;
+  border-radius: 5px;
+}
+
+.menu-item h3 {
+  margin: 0;
+}
+
+.menu-item p {
+  margin: 5px 0;
+  font-style: italic;
+}
+
+footer {
+  background-color: #c2466b;
+  color: white;
+  text-align: center;
+  padding: 10px 0;
+}
+
+@media (max-width: 768px) {
+  nav ul {
+    text-align: left;
+  }
+  nav li {
+    display: block;
+    margin: 10px 0;
+  }
+  .menu-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .menu-item img {
+    margin-bottom: 10px;
+  }
+}
+
+/*Hover effect*/
+.menu-item:hover {
+  background-color: #f2e8e0; /*light beige hover*/
+  transform: translateY(-2px);
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+</style>
+</head>
+<body>
+<header>
+  <h1>Jade Dragon Restaurant</h1>
+</header>
+<nav>
+  <ul>
+    <li><a href="#">Home</a></li>
+    <li><a href="#">Menu</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+  </ul>
+</nav>
+<section>
+  <h2>Our Menu</h2>
+  <div class="menu-item">
+    <img src="placeholder.jpg" alt="Dish 1">
+    <h3>Kung Pao Chicken</h3>
+    <p>Spicy and flavorful chicken dish.</p>
+  </div>
+  <div class="menu-item">
+    <img src="placeholder.jpg" alt="Dish 2">
+    <h3>Sweet and Sour Pork</h3>
+    <p>Classic sweet and sour pork.</p>
+  </div>
+  <div class="menu-item">
+    <img src="placeholder.jpg" alt="Dish 3">
+    <h3>Egg Fried Rice</h3>
+    <p>Fluffy egg fried rice.</p>
+  </div>
+</section>
+<footer>
+  <p>&copy; 2023 Jade Dragon Restaurant</p>
+</footer>
+</body>
+</html>

@@ -368,12 +368,54 @@ class RAGEnabledResponseAgent:
         genai.configure(api_key=self.settings.GEMINI_API_KEY)
         self.model = genai.GenerativeModel(self.settings.AI_MODEL)
         
-        # Initialize ChromaDB for RAG
-        self.chroma_client = chromadb.PersistentClient(path="./chroma_db")
+        # Initialize ChromaDB for RAG with consistent settings
+        self.chroma_client = self._get_chroma_client()
+        
         try:
             self.collection = self.chroma_client.get_collection("voice_commands")
         except:
             self.collection = self.chroma_client.create_collection("voice_commands")
+    
+    def _get_chroma_client(self):
+        """Get ChromaDB client with proper error handling"""
+        import os
+        import shutil
+        import time
+        
+        try:
+            settings = chromadb.config.Settings(
+                anonymized_telemetry=False,
+                allow_reset=True
+            )
+            return chromadb.PersistentClient(path="./chroma_db", settings=settings)
+        except ValueError as e:
+            if "different settings" in str(e):
+                print("ChromaDB settings conflict detected. Creating new database...")
+                # Create a new database path with timestamp
+                timestamp = int(time.time())
+                new_path = f"./chroma_db_rag_{timestamp}"
+                
+                try:
+                    settings = chromadb.config.Settings(
+                        anonymized_telemetry=False,
+                        allow_reset=True
+                    )
+                    client = chromadb.PersistentClient(path=new_path, settings=settings)
+                    print(f"Created new ChromaDB at {new_path}")
+                    return client
+                except Exception as fallback_error:
+                    print(f"Fallback database creation failed: {fallback_error}")
+                    # Use in-memory client as last resort
+                    print("Using in-memory ChromaDB client")
+                    return chromadb.Client()
+            else:
+                # Fallback to in-memory client
+                print("Using in-memory ChromaDB client")
+                return chromadb.Client()
+        except Exception:
+            # Fallback to in-memory client
+            print("Using in-memory ChromaDB client")
+            return chromadb.Client()
     
     async def process(self, state: AgentState) -> AgentState:
         """Generate context-aware response using RAG"""

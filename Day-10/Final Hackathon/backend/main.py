@@ -17,6 +17,7 @@ except ImportError as e:
     from services.website_generator_simple import WebsiteGenerator
 from services.html_editor import HTMLEditor
 from services.session_manager import SessionManager
+from services.intelligent_response import IntelligentResponseService
 from core.config import get_settings
 
 # Initialize FastAPI app
@@ -42,6 +43,7 @@ app.add_middleware(
 website_generator = WebsiteGenerator()
 html_editor = HTMLEditor()
 session_manager = SessionManager()
+intelligent_response = IntelligentResponseService()
 
 # Request/Response models
 class GenerateRequest(BaseModel):
@@ -74,6 +76,7 @@ class EditResponse(BaseModel):
     success: bool
     message: str
     changes_made: List[str]
+    intelligent_response: Optional[Dict[str, Any]] = None
 
 class SaveResponse(BaseModel):
     filename: str
@@ -137,14 +140,23 @@ async def edit_website(request: EditRequest):
         # Process the edit command
         result = await html_editor.edit_html(request.html_content, request.edit_command)
         
+        # Generate intelligent response
+        intelligent_resp = await intelligent_response.generate_confirmation_response(
+            command=request.edit_command,
+            edit_result=result,
+            session_id=request.session_id,
+            language="en"  # Could be made configurable
+        )
+        
         # Update session history
         session_manager.add_to_history(request.session_id, result["html_content"], request.edit_command)
         
         return EditResponse(
             html_content=result["html_content"],
             success=True,
-            message="Website edited successfully",
-            changes_made=result.get("changes", [])
+            message=intelligent_resp.get("message", "Website edited successfully"),
+            changes_made=result.get("changes", []),
+            intelligent_response=intelligent_resp
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Edit failed: {str(e)}")
