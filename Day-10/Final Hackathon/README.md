@@ -292,6 +292,16 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ---
 
+## 🎨 Design Resources
+
+### 📱 UI/UX Design
+- **Figma Design File:** [Voice Website Generator Design](https://www.figma.com/design/5PniPMngMoD05XnT5Zl6ry/Voice-Website-Generator?node-id=3-171&t=xD7zebIPOV6myRLK-1)
+- **Design System:** Complete UI components and user flow
+- **Prototypes:** Interactive mockups and user journey mapping
+- **Wireframes:** Low-fidelity layouts and component structures
+
+---
+
 ## 📂 Repository Structure
 
 ```
@@ -346,6 +356,12 @@ Day-10/Final Hackathon/
 ├── .gitignore                      # Git Ignore Rules
 └── README.md                       # This File
 ```
+
+### 🎨 Design Resources
+- **📱 Figma Design:** [Voice Website Generator UI/UX Design](https://www.figma.com/design/5PniPMngMoD05XnT5Zl6ry/Voice-Website-Generator?node-id=3-171&t=xD7zebIPOV6myRLK-1)
+- **🎯 Design System:** Complete UI components and user flow documentation
+- **🖼️ Prototypes:** Interactive mockups and user journey mapping
+- **📐 Wireframes:** Low-fidelity layouts and component structures
 
 ---
 
