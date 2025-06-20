@@ -75,6 +75,7 @@ backend/
 │   └── config.py           # Environment configuration
 ├── services/
 │   ├── website_generator.py  # AI website generation
+│   ├── langgraph_agents.py   # Langgraph Agents Services
 │   ├── html_editor.py        # Voice-controlled editing
 │   └── session_manager.py    # Session & file management
 ├── main.py                 # FastAPI application
@@ -92,14 +93,75 @@ backend/
 | `/undo` | POST | Undo last change |
 | `/sessions/{id}/history` | GET | Get session history |
 
-## 🧠 Agent Workflow
+## 🧠 Agent System & Workflow
 
-The system uses LangGraph agents for intelligent processing:
+### Multi-Agent Architecture
 
-1. **Input Analysis** - Processes natural language commands
-2. **Content Generation** - Creates/modifies HTML using Gemini AI  
-3. **Validation** - Ensures HTML quality and functionality
-4. **Storage** - Saves to file system and vector database
+The backend employs multiple specialized AI agents orchestrated by LangGraph:
+
+#### 🎤 **Voice to Text Agent**
+- **Purpose**: Converts audio streams to accurate text transcription
+- **Technology**: Integrated with frontend Web Speech API
+- **Functionality**: Handles noise reduction, accent recognition, and technical term processing
+
+#### 🧭 **Semantic Intent Router Agent**
+- **Purpose**: Analyzes user commands and determines appropriate action paths
+- **Functionality**: 
+  - Classifies intents (generation, editing, styling, content modification)
+  - Extracts semantic meaning from natural language
+  - Routes requests to appropriate specialist agents
+  - Handles context switching between different command types
+
+#### ✏️ **Contextual Editor Agent**
+- **Purpose**: Intelligently modifies existing HTML/CSS based on voice commands
+- **Functionality**:
+  - Locates specific HTML elements using semantic understanding
+  - Applies styling changes while preserving existing structure
+  - Maintains design consistency and responsive behavior
+  - Handles complex multi-element modifications
+
+#### 🔍 **RAG-Enabled Response Agent**
+- **Purpose**: Provides intelligent, context-aware responses and suggestions
+- **Technology**: ChromaDB vector search + Gemini AI
+- **Functionality**:
+  - Generates helpful follow-up suggestions
+  - Provides explanations of changes made
+  - Offers proactive improvement recommendations
+  - Maintains conversation context across sessions
+
+#### ✅ **Validation Agent**
+- **Purpose**: Ensures HTML quality, accessibility, and functionality
+- **Functionality**:
+  - Validates HTML syntax and structure
+  - Checks CSS compliance and responsiveness
+  - Scores changes for quality and user experience
+  - Prevents breaking changes to website functionality
+
+### 🔄 Complete Voice Command Processing Flow
+
+```mermaid
+graph TD
+    A[🎤 Voice Command from Frontend] --> B[Voice to Text Agent]
+    B --> C[📝 Transcribed Text<br/>Example: Change header color to blue]
+    C --> D[Semantic Intent Router Agent]
+    D --> E[🏷️ Intent Classification<br/>Tag: Style | Target: header.color=blue]
+    E --> F[Contextual Editor Agent]
+    F --> G[🎯 Element Location & Update<br/>Finds header block, applies blue color]
+    G --> H[RAG-Enabled Response Agent]
+    H --> I[💬 Intelligent Response<br/>Header changed to blue. Adjust font size too?]
+    I --> J[Validation Agent]
+    J --> K[✅ Quality Check<br/>Validates change, returns success score]
+    K --> L[📤 Complete Response to Frontend]
+    L --> M[🖥️ UI Updates<br/>Shows new header + feedback message]
+    
+    style A fill:#00D881
+    style C fill:#2CC5A9
+    style E fill:#09624C
+    style G fill:#2CC5A9
+    style I fill:#09624C
+    style K fill:#00D881
+    style M fill:#F1F7F6,color:#001B1A
+```
 
 ## 🔧 Environment Variables
 
