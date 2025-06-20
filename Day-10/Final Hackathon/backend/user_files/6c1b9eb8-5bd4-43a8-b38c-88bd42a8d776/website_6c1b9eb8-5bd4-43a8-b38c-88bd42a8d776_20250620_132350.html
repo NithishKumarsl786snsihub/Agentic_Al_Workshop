@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Tech Startup Landing Page">
+<title>Tech Startup - Innovate</title>
+<style>
+body {
+  font-family: 'Arial', sans-serif;
+  margin: 0;
+  background: linear-gradient(to bottom, #f0f0f0, #e0e0e0);
+  color: #333;
+  line-height: 1.6;
+  transition: background-color 0.5s ease;
+}
+
+header {
+  background-color: #333;
+  color: #fff;
+  padding: 20px 0;
+  text-align: center;
+}
+
+h1 {
+  font-size: 2.5em;
+  margin-bottom: 0.5em;
+}
+
+p {
+  font-size: 1.1em;
+}
+
+section {
+  padding: 40px;
+  text-align: center;
+}
+
+.feature {
+  display: inline-block;
+  width: 30%;
+  margin: 10px;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.feature img {
+  width: 50px;
+  height: 50px;
+  margin-bottom: 10px;
+}
+
+.feature h3 {
+  font-size: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+footer {
+  background-color: #333;
+  color: #fff;
+  padding: 10px 0;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .feature {
+    width: 45%;
+  }
+}
+
+@media (max-width: 480px) {
+  .feature {
+    width: 90%;
+  }
+  section {
+    padding: 20px;
+  }
+}
+
+.animated {
+  animation: fadeIn 1s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Innovate</h1>
+  <p>Your Future Starts Here</p>
+</header>
+
+<section class="animated">
+  <div class="feature">
+    <img src="https://via.placeholder.com/50" alt="Feature 1">
+    <h3>Feature 1</h3>
+    <p>Description of Feature 1</p>
+  </div>
+  <div class="feature">
+    <img src="https://via.placeholder.com/50" alt="Feature 2">
+    <h3>Feature 2</h3>
+    <p>Description of Feature 2</p>
+  </div>
+  <div class="feature">
+    <img src="https://via.placeholder.com/50" alt="Feature 3">
+    <h3>Feature 3</h3>
+    <p>Description of Feature 3</p>
+  </div>
+</section>
+
+<footer>
+  <p>&copy; 2023 Innovate</p>
+</footer>
+</body>
+</html>
