@@ -57,7 +57,7 @@ graph TB
     end
     
     subgraph "🤖 AI Services"
-        R[🤖 Gemini Pro API]
+        R[🤖 Gemini 1.5-flash API]
         S[🎯 Web Speech API]
         T[🔍 Vector Embeddings]
     end
@@ -105,7 +105,7 @@ graph TB
 
 #### **Backend Stack**
 - **Framework:** FastAPI with Python 3.11
-- **AI Integration:** Google Gemini Pro API
+- **AI Integration:** Google Gemini 1.5-flash API
 - **Vector Database:** ChromaDB
 - **Agent Framework:** Custom LangChain Implementation
 - **Server:** Uvicorn ASGI
@@ -154,7 +154,7 @@ graph TD
 - Determines user intent (layout changes, styling, content modifications)
 - Routes commands to appropriate specialized agents
 - Maintains conversation context and user preferences
-- **Technology Stack:** Gemini Pro API, Custom NLP models
+- **Technology Stack:** Gemini 1.5-flash API, Custom NLP models
 
 #### 3. ✏️ Contextual Editor Agent
 **Primary Role:** Website Modification & Editing
@@ -162,7 +162,7 @@ graph TD
 - Handles text, color, layout, and structural changes
 - Maintains HTML/CSS integrity during edits
 - Implements responsive design principles
-- **Technology Stack:** Gemini Pro API, Custom HTML/CSS processors
+- **Technology Stack:** Gemini 1.5-flash API, Custom HTML/CSS processors
 
 #### 4. 📚 RAG-Enabled Response Agent
 **Primary Role:** Knowledge Retrieval & Enhancement
@@ -170,7 +170,7 @@ graph TD
 - Fetches relevant code snippets from knowledge base
 - Provides contextual recommendations and alternatives
 - Enhances responses with best practices and examples
-- **Technology Stack:** ChromaDB, Vector embeddings, Gemini Pro API
+- **Technology Stack:** ChromaDB, Vector embeddings, Gemini 1.5-flash API
 
 #### 5. ✅ Validation Agent
 **Primary Role:** Quality Assurance & Compliance
@@ -178,7 +178,7 @@ graph TD
 - Ensures design best practices and accessibility standards
 - Performs code quality checks and optimization
 - Provides feedback and suggestions for improvements
-- **Technology Stack:** Custom validation rules, Gemini Pro API
+- **Technology Stack:** Custom validation rules, Gemini 1.5-flash API
 
 ---
 
@@ -224,7 +224,7 @@ class AgentCoordinator:
 
 ### 🤖 Large Language Models
 
-#### **Gemini Pro API**
+#### **Gemini 1.5-flash API**
 - **Primary Use:** Design intent interpretation and code generation
 - **Capabilities:** Natural language understanding, HTML/CSS generation
 - **Integration:** Core reasoning engine for all agents
@@ -576,7 +576,7 @@ graph TB
     end
     
     subgraph "🧠 Intelligence Layer"
-        K[🤖 Gemini Pro API]
+        K[🤖 Gemini 1.5-flash API]
         L[🎯 Intent Processing]
         M[🔍 Context Analysis]
         N[💡 Code Generation]
