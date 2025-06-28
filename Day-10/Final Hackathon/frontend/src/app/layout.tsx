@@ -1,5 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
+import { AuthProvider } from "../contexts/AuthContext"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -28,14 +29,16 @@ export default function RootLayout({
         className="font-axiforma-regular bg-[var(--color-bg)] text-[var(--color-text)] antialiased"
         suppressHydrationWarning={true}
       >
-        <div className="min-h-screen relative overflow-hidden">
-          {/* Global background effects */}
-          <div className="fixed inset-0 pointer-events-none">
-            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[var(--color-accent)] to-transparent opacity-50"></div>
-            <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[var(--color-voice)] to-transparent opacity-50"></div>
+        <AuthProvider>
+          <div className="min-h-screen relative overflow-hidden">
+            {/* Global background effects */}
+            <div className="fixed inset-0 pointer-events-none">
+              <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[var(--color-accent)] to-transparent opacity-50"></div>
+              <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[var(--color-voice)] to-transparent opacity-50"></div>
+            </div>
+            {children}
           </div>
-          {children}
-        </div>
+        </AuthProvider>
       </body>
     </html>
   )

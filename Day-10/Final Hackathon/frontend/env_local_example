@@ -1,5 +1,22 @@
-# Backend API Configuration
+# API Configuration
 NEXT_PUBLIC_API_URL=http://localhost:8000
+
+# Application Configuration
+NEXT_PUBLIC_APP_NAME="Voice Website Generator"
+NEXT_PUBLIC_APP_DESCRIPTION="AI-Powered Website Creation with Voice Commands"
+
+# Feature Flags
+NEXT_PUBLIC_ENABLE_ANALYTICS=false
+NEXT_PUBLIC_ENABLE_DEBUG=false
+
+# Voice Recognition Settings
+NEXT_PUBLIC_VOICE_LANG=en-US
+NEXT_PUBLIC_VOICE_TIMEOUT=4000
+
+# Development Settings
+NEXT_PUBLIC_DEV_MODE=true
+
+# Backend API Configuration
 NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
 
 # Frontend Configuration

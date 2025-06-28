@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Modern Portfolio Website">
+<title>My Portfolio</title>
+<style>
+body {
+  margin: 0;
+  font-family: 'Arial', sans-serif;
+  background-color: #1e1e1e;
+  color: #eee;
+  transition: background-color 0.3s ease;
+}
+
+.hero {
+  background: url('hero-image.jpg') center/cover no-repeat; /* Replace with your hero image */
+  height: 60vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: white;
+}
+
+.hero h1 {
+  font-size: 3em;
+  margin-bottom: 0.5em;
+}
+
+.hero p {
+  font-size: 1.2em;
+  margin-bottom: 1em;
+}
+
+.section {
+  padding: 2em;
+  text-align: center;
+}
+
+.about {
+  background-color: #282828;
+}
+
+.skills {
+  background-color: #333;
+}
+
+.contact {
+  background-color: #282828;
+}
+
+.skill-item {
+  display: inline-block;
+  padding: 1em 2em;
+  margin: 1em;
+  background-color: #444;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
+}
+
+.skill-item:hover {
+  background-color: #555;
+  cursor: pointer;
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.contact-form input,
+.contact-form textarea {
+  padding: 0.8em;
+  margin-bottom: 1em;
+  background-color: #444;
+  border: none;
+  border-radius: 5px;
+  color: #eee;
+}
+
+.contact-form button {
+  padding: 0.8em 1.5em;
+  background-color: #666;
+  border: none;
+  border-radius: 5px;
+  color: #eee;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.contact-form button:hover {
+  background-color: #888;
+}
+
+@media (max-width: 768px) {
+  .hero h1 {
+    font-size: 2em;
+  }
+  .hero p {
+    font-size: 1em;
+  }
+  .skill-item {
+    margin: 0.5em;
+  }
+}
+</style>
+</head>
+<body>
+<div class="hero">
+  <h1>Welcome to My Portfolio</h1>
+  <p>A showcase of my skills and projects.</p>
+</div>
+
+<section class="about section">
+  <h2>About Me</h2>
+  <p>This is a brief description about myself and my background.</p>
+</section>
+
+<section class="skills section">
+  <h2>My Skills</h2>
+  <div class="skill-item">HTML</div>
+  <div class="skill-item">CSS</div>
+  <div class="skill-item">JavaScript</div>
+  <div class="skill-item">React</div>
+  <div class="skill-item">Node.js</div>
+</section>
+
+<section class="contact section">
+  <h2>Contact Me</h2>
+  <form class="contact-form">
+    <input type="text" placeholder="Your Name" required>
+    <input type="email" placeholder="Your Email" required>
+    <textarea placeholder="Your Message" rows="5" required></textarea>
+    <button type="submit">Send</button>
+  </form>
+</section>
+</body>
+</html>

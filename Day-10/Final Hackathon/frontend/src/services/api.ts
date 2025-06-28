@@ -72,6 +72,33 @@ export interface UndoRedoResponse {
   can_redo: boolean;
 }
 
+export interface SaveConversationRequest {
+  final_prompt: string;
+  session_id?: string;
+  project_id?: string;
+  website_type?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface ConversationResponse {
+  success: boolean;
+  conversation_id?: string;
+  message: string;
+  analysis?: Record<string, any>;
+}
+
+export interface ConversationListResponse {
+  conversations: Array<{
+    id: string;
+    prompt: string;
+    website_type: string;
+    created_at: string;
+    analysis: Record<string, any>;
+  }>;
+  total: number;
+  success: boolean;
+}
+
 class ApiService {
   private baseUrl: string;
 
@@ -90,6 +117,18 @@ class ApiService {
         'Content-Type': 'application/json',
       },
     };
+
+    // Add auth token if available
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      defaultOptions.headers = {
+        ...defaultOptions.headers,
+        'Authorization': `Bearer ${token}`,
+      };
+      console.log('🔐 Adding auth token to request:', endpoint);
+    } else {
+      console.warn('⚠️ No auth token found for request:', endpoint);
+    }
 
     const response = await fetch(url, {
       ...defaultOptions,
@@ -153,6 +192,28 @@ class ApiService {
 
   async healthCheck(): Promise<any> {
     return this.makeRequest('/');
+  }
+
+  // Conversation methods
+  async saveConversation(request: SaveConversationRequest): Promise<ConversationResponse> {
+    return this.makeRequest<ConversationResponse>('/conversations/save', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async getUserConversations(limit: number = 20, offset: number = 0): Promise<ConversationListResponse> {
+    return this.makeRequest<ConversationListResponse>(`/conversations?limit=${limit}&offset=${offset}`);
+  }
+
+  async searchConversations(query: string, limit: number = 10): Promise<ConversationListResponse> {
+    return this.makeRequest<ConversationListResponse>(`/conversations/search?query=${encodeURIComponent(query)}&limit=${limit}`);
+  }
+
+  async deleteConversation(conversationId: string): Promise<{ success: boolean; message: string }> {
+    return this.makeRequest(`/conversations/${conversationId}`, {
+      method: 'DELETE',
+    });
   }
 }
 
