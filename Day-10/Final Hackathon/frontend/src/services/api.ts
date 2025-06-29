@@ -20,9 +20,9 @@ export interface EditRequest {
 }
 
 export interface IntelligentResponse {
-  type: 'confirmation' | 'clarification';
+  type: 'confirmation' | 'clarification' | 'error_assistance' | 'smart_assistant';
   message: string;
-  summary: string;
+  summary?: string;
   suggestions?: string[];
   options?: string[];
   follow_up_question?: string;
@@ -36,6 +36,17 @@ export interface IntelligentResponse {
     context_used?: boolean;
     clarification_needed?: boolean;
     error?: string;
+    website_type?: string;
+    timestamp?: string;
+    error_type?: string;
+    processing_method?: string;
+    langgraph_used?: boolean;
+    edit_success?: boolean;
+    changes_applied?: string[];
+    validation_score?: number;
+    warnings?: string[];
+    agent_errors?: string[];
+    processing_time?: number;
   };
 }
 
@@ -108,7 +119,8 @@ class ApiService {
 
   private async makeRequest<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    skipAuth: boolean = false
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     
@@ -118,33 +130,101 @@ class ApiService {
       },
     };
 
-    // Add auth token if available
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      defaultOptions.headers = {
-        ...defaultOptions.headers,
-        'Authorization': `Bearer ${token}`,
-      };
-      console.log('🔐 Adding auth token to request:', endpoint);
-    } else {
-      console.warn('⚠️ No auth token found for request:', endpoint);
+    // Add auth token if available and not skipped
+    if (!skipAuth) {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        defaultOptions.headers = {
+          ...defaultOptions.headers,
+          'Authorization': `Bearer ${token}`,
+        };
+      } else {
+        console.warn('⚠️ No auth token found for request:', endpoint);
+      }
     }
 
-    const response = await fetch(url, {
-      ...defaultOptions,
-      ...options,
-      headers: {
-        ...defaultOptions.headers,
-        ...options.headers,
-      },
-    });
+    try {
+      const response = await fetch(url, {
+        ...defaultOptions,
+        ...options,
+        headers: {
+          ...defaultOptions.headers,
+          ...options.headers,
+        },
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      // Handle token expiration
+      if (response.status === 401 && !skipAuth) {
+        console.log('🔄 Token expired, attempting refresh...');
+        
+        try {
+          // Try to refresh token
+          const { authService } = await import('./authService');
+          await authService.refreshToken();
+          
+          // Retry the original request with new token
+          const newToken = localStorage.getItem('access_token');
+          if (newToken) {
+            const retryResponse = await fetch(url, {
+              ...defaultOptions,
+              ...options,
+              headers: {
+                ...defaultOptions.headers,
+                ...options.headers,
+                'Authorization': `Bearer ${newToken}`,
+              },
+            });
+            
+            if (retryResponse.ok) {
+              return retryResponse.json();
+            }
+          }
+        } catch (refreshError) {
+          console.error('❌ Token refresh failed:', refreshError);
+          // Don't throw here, let the original error be handled
+        }
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        
+        // Provide better error messages for common status codes
+        let errorMessage = errorData.detail || errorData.message || `Request failed`;
+        
+        switch (response.status) {
+          case 401:
+            errorMessage = 'Authentication required. Please log in again.';
+            break;
+          case 403:
+            errorMessage = 'Access denied. You do not have permission to perform this action.';
+            break;
+          case 404:
+            errorMessage = 'The requested resource was not found.';
+            break;
+          case 429:
+            errorMessage = 'Too many requests. Please try again later.';
+            break;
+          case 500:
+            errorMessage = 'Server error. Please try again later.';
+            break;
+          case 503:
+            errorMessage = 'Service temporarily unavailable. Please try again later.';
+            break;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      return response.json();
+    } catch (error) {
+      // Handle network errors
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Network error. Please check your internet connection and try again.');
+      }
+      
+      // Re-throw other errors
+      throw error;
     }
-
-    return response.json();
   }
 
   async generateWebsite(request: GenerateRequest): Promise<GenerateResponse> {
@@ -180,6 +260,15 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(request),
     });
+  }
+
+  // Aliases for editor compatibility
+  async undoEdit(request: UndoRedoRequest): Promise<UndoRedoResponse> {
+    return this.undoChange(request);
+  }
+
+  async redoEdit(request: UndoRedoRequest): Promise<UndoRedoResponse> {
+    return this.redoChange(request);
   }
 
   async getSessionHistory(sessionId: string): Promise<any> {

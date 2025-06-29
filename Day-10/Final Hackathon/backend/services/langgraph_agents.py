@@ -29,6 +29,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 import chromadb
 from core.config import get_settings
+from services.api_key_manager import api_key_manager
 
 # Pydantic models for structured outputs
 class VoiceProcessingOutput(BaseModel):
@@ -133,32 +134,177 @@ class HTMLEditorTool(BaseTool):
         return self._apply_changes(html, changes)
     
     def _apply_changes(self, html: str, changes: Dict[str, Any]) -> str:
-        """Apply changes to HTML"""
+        """Apply comprehensive changes to HTML based on user commands"""
         try:
             soup = BeautifulSoup(html, 'html.parser')
             
-            # Apply CSS updates
+            # Handle different types of changes
+            intent = changes.get("intent", "")
+            parameters = changes.get("parameters", {})
+            target_elements = changes.get("target_elements", [])
+            
+            # Color and styling changes
+            if intent == "style" or "color" in parameters:
+                self._apply_color_changes(soup, parameters)
+            
+            # Layout changes
+            if intent == "layout":
+                self._apply_layout_changes(soup, parameters)
+            
+            # Content changes
+            if intent == "content":
+                self._apply_content_changes(soup, parameters)
+                
+            # Apply specific CSS updates
             css_updates = changes.get("css_updates", {})
             if css_updates:
-                style_tag = soup.find('style') or soup.new_tag('style')
-                if not soup.find('style'):
-                    if soup.head:
-                        soup.head.append(style_tag)
-                
-                for prop, value in css_updates.items():
-                    style_tag.string = (style_tag.string or "") + f"\nbody {{ {prop}: {value}; }}"
+                self._apply_css_updates(soup, css_updates)
             
             # Apply content updates
             content_updates = changes.get("content_updates", {})
-            if content_updates.get("text"):
-                h1_tag = soup.find('h1')
-                if h1_tag:
-                    h1_tag.string = content_updates["text"]
+            if content_updates:
+                self._apply_content_updates(soup, content_updates)
             
             return str(soup)
+            
         except Exception as e:
             print(f"Error applying changes: {e}")
             return html
+    
+    def _apply_color_changes(self, soup: BeautifulSoup, parameters: Dict[str, Any]) -> None:
+        """Apply color changes to HTML elements"""
+        color = parameters.get("color", "")
+        target = parameters.get("target", "header").lower()
+        gradient = parameters.get("gradient", False)
+        
+        # Find or create style tag
+        style_tag = soup.find('style')
+        if not style_tag:
+            style_tag = soup.new_tag('style')
+            if soup.head:
+                soup.head.append(style_tag)
+            else:
+                soup.insert(0, style_tag)
+        
+        # Generate CSS based on target and color
+        css_rules = []
+        
+        if "header" in target:
+            if gradient and "purple" in color.lower():
+                css_rules.append("""
+                header, .header, #header {
+                    background: linear-gradient(135deg, #ff69b4, #9370db) !important;
+                    color: white !important;
+                    padding: 20px !important;
+                }
+                """)
+            else:
+                css_rules.append(f"""
+                header, .header, #header {{
+                    background-color: {color} !important;
+                    color: white !important;
+                    padding: 20px !important;
+                }}
+                """)
+        
+        if "footer" in target:
+            if gradient and "purple" in color.lower():
+                css_rules.append("""
+                footer, .footer, #footer {
+                    background: linear-gradient(135deg, #ff69b4, #9370db) !important;
+                    color: white !important;
+                    padding: 20px !important;
+                }
+                """)
+            else:
+                css_rules.append(f"""
+                footer, .footer, #footer {{
+                    background-color: {color} !important;
+                    color: white !important;
+                    padding: 20px !important;
+                }}
+                """)
+        
+        if "background" in target:
+            css_rules.append(f"""
+            body {{
+                background-color: {color} !important;
+            }}
+            """)
+        
+        # Apply CSS rules
+        if css_rules:
+            current_css = style_tag.string or ""
+            style_tag.string = current_css + "\n".join(css_rules)
+    
+    def _apply_layout_changes(self, soup: BeautifulSoup, parameters: Dict[str, Any]) -> None:
+        """Apply layout changes to HTML"""
+        layout_type = parameters.get("layout", "")
+        
+        style_tag = soup.find('style') or soup.new_tag('style')
+        if not soup.find('style'):
+            if soup.head:
+                soup.head.append(style_tag)
+        
+        css_rules = []
+        
+        if "center" in layout_type:
+            css_rules.append("""
+            .container, main, .main-content {
+                text-align: center !important;
+                margin: 0 auto !important;
+                max-width: 1200px !important;
+            }
+            """)
+        
+        if "responsive" in layout_type:
+            css_rules.append("""
+            @media (max-width: 768px) {
+                .container { padding: 10px !important; }
+                h1 { font-size: 1.5em !important; }
+            }
+            """)
+        
+        if css_rules:
+            current_css = style_tag.string or ""
+            style_tag.string = current_css + "\n".join(css_rules)
+    
+    def _apply_content_changes(self, soup: BeautifulSoup, parameters: Dict[str, Any]) -> None:
+        """Apply content changes to HTML"""
+        new_text = parameters.get("text", "")
+        target = parameters.get("target", "title").lower()
+        
+        if "title" in target or "heading" in target:
+            h1_tag = soup.find('h1')
+            if h1_tag and new_text:
+                h1_tag.string = new_text
+        
+        if "description" in target:
+            p_tags = soup.find_all('p')
+            if p_tags and new_text:
+                p_tags[0].string = new_text
+    
+    def _apply_css_updates(self, soup: BeautifulSoup, css_updates: Dict[str, Any]) -> None:
+        """Apply direct CSS updates"""
+        style_tag = soup.find('style') or soup.new_tag('style')
+        if not soup.find('style'):
+            if soup.head:
+                soup.head.append(style_tag)
+        
+        css_rules = []
+        for property_name, value in css_updates.items():
+            css_rules.append(f"body {{ {property_name}: {value} !important; }}")
+        
+        if css_rules:
+            current_css = style_tag.string or ""
+            style_tag.string = current_css + "\n".join(css_rules)
+    
+    def _apply_content_updates(self, soup: BeautifulSoup, content_updates: Dict[str, Any]) -> None:
+        """Apply direct content updates"""
+        if content_updates.get("text"):
+            h1_tag = soup.find('h1')
+            if h1_tag:
+                h1_tag.string = content_updates["text"]
 
 class VoiceToTextAgent:
     """Agent 1: Processes voice input using proper LangChain patterns"""
@@ -166,12 +312,8 @@ class VoiceToTextAgent:
     def __init__(self):
         self.settings = get_settings()
         
-        # Initialize LangChain LLM
-        self.llm = ChatGoogleGenerativeAI(
-            model=self.settings.AI_MODEL,
-            google_api_key=self.settings.GEMINI_API_KEY,
-            temperature=0.1
-        )
+        # Use API key manager for dynamic key switching
+        self.api_key_manager = api_key_manager
         
         # Initialize tools
         self.voice_tool = VoiceToTextTool()
@@ -200,10 +342,8 @@ COMMON ISSUES TO FIX:
         ])
 
     async def process(self, state: AgentState) -> AgentState:
-        """Process voice input into clean text using LangChain"""
+        """Process voice input with fallback to avoid API limits"""
         try:
-            start_time = datetime.now()
-            
             voice_input = state.get("voice_input", "")
             
             if not voice_input.strip():
@@ -215,43 +355,117 @@ COMMON ISSUES TO FIX:
                     "agent_errors": state.get("agent_errors", []) + ["Empty voice input"]
                 }
             
-            # Use LangChain prompt template and output parser
-            prompt = self.prompt_template.format_messages(
-                voice_input=voice_input,
-                format_instructions=self.output_parser.get_format_instructions()
-            )
+            # **FALLBACK FIRST** - Use simple text processing to save API calls
+            cleaned_text = self._simple_text_cleaning(voice_input)
+            confidence = self._estimate_confidence(voice_input, cleaned_text)
             
-            # Process with LLM
-            response = await self.llm.ainvoke(prompt)
+            # Only use API if text is very unclear (confidence < 0.3)
+            if confidence < 0.3:
+                try:
+                    # Use LangChain prompt template
+                    prompt = self.prompt_template.format_messages(
+                        voice_input=voice_input,
+                        format_instructions=self.output_parser.get_format_instructions()
+                    )
+                    
+                    # Get current LLM with API key switching
+                    llm = self.api_key_manager.get_langchain_llm(temperature=0.1)
+                    if not llm:
+                        raise Exception("No API keys available")
+                    
+                    # Process with LLM (with timeout to avoid hanging)
+                    response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=10.0)
+                    
+                    try:
+                        # Parse structured output
+                        result = self.output_parser.parse(response.content)
+                        
+                        return {
+                            **state,
+                            "transcribed_text": voice_input,
+                            "filtered_text": result.cleaned_text,
+                            "confidence_score": result.confidence,
+                        }
+                    except:
+                        # Fallback if parsing fails
+                        pass
+                except Exception as e:
+                    print(f"⚠️ API call failed, using fallback: {e}")
             
-            try:
-                # Parse structured output
-                result = self.output_parser.parse(response.content)
-                cleaned_text = result.cleaned_text
-                confidence = result.confidence
-            except:
-                # Fallback: use tool for simple cleaning
-                cleaned_text = await self.voice_tool._arun(voice_input)
-                confidence = 0.7
-            
-            processing_time = (datetime.now() - start_time).total_seconds()
-            
+            # Use enhanced fallback processing
             return {
                 **state,
                 "transcribed_text": voice_input,
                 "filtered_text": cleaned_text,
                 "confidence_score": confidence,
-                "processing_time": processing_time
             }
             
         except Exception as e:
+            # Always fallback on any error
+            cleaned_text = self._simple_text_cleaning(state.get("voice_input", ""))
             return {
                 **state,
-                "transcribed_text": voice_input,
-                "filtered_text": voice_input,
-                "confidence_score": 0.3,
-                "agent_errors": state.get("agent_errors", []) + [f"Voice-to-Text Agent error: {str(e)}"]
+                "transcribed_text": state.get("voice_input", ""),
+                "filtered_text": cleaned_text,
+                "confidence_score": 0.7,
+                "agent_errors": state.get("agent_errors", []) + [f"Voice Agent error: {str(e)}"]
             }
+    
+    def _simple_text_cleaning(self, text: str) -> str:
+        """Enhanced text cleaning without API calls"""
+        if not text:
+            return ""
+        
+        # Remove common filler words
+        fillers = ["um", "uh", "like", "you know", "so", "well", "er", "ah"]
+        words = text.lower().split()
+        
+        # Remove fillers
+        cleaned_words = [w for w in words if w not in fillers]
+        
+        # Basic corrections
+        corrections = {
+            "colour": "color",
+            "centre": "center",
+            "grey": "gray",
+            "realise": "realize"
+        }
+        
+        for i, word in enumerate(cleaned_words):
+            if word in corrections:
+                cleaned_words[i] = corrections[word]
+        
+        result = " ".join(cleaned_words)
+        
+        # Remove noise markers
+        noise_patterns = ["[NOISE]", "[UNCLEAR]", "[PAUSE]", "(inaudible)", "(unclear)"]
+        for pattern in noise_patterns:
+            result = result.replace(pattern, "")
+        
+        return result.strip()
+    
+    def _estimate_confidence(self, original: str, cleaned: str) -> float:
+        """Estimate confidence based on text characteristics"""
+        if not original or not cleaned:
+            return 0.0
+        
+        # Base confidence
+        confidence = 0.8
+        
+        # Reduce confidence for short text
+        if len(original.split()) < 3:
+            confidence -= 0.2
+        
+        # Reduce confidence if lots of cleaning was needed
+        reduction_ratio = 1 - (len(cleaned) / len(original))
+        confidence -= reduction_ratio * 0.3
+        
+        # Check for clear intent keywords
+        intent_keywords = ["change", "make", "add", "remove", "color", "background", "header", "footer"]
+        if any(keyword in cleaned.lower() for keyword in intent_keywords):
+            confidence += 0.1
+        
+        return max(0.1, min(1.0, confidence))
 
 class SemanticIntentRouterAgent:
     """Agent 2: Classifies commands using LangChain patterns"""
@@ -300,7 +514,7 @@ PARAMETER EXTRACTION:
         ])
 
     async def process(self, state: AgentState) -> AgentState:
-        """Classify intent using LangChain"""
+        """Classify intent with fallback to avoid API quota issues"""
         try:
             filtered_text = state.get("filtered_text", "")
             
@@ -315,74 +529,104 @@ PARAMETER EXTRACTION:
                     "agent_errors": state.get("agent_errors", []) + ["Empty command text"]
                 }
             
-            # Get chat history from memory
-            chat_history = self.memory.chat_memory.messages if self.memory.chat_memory else []
+            # **ALWAYS USE FALLBACK FIRST** to save API quota
+            intent, confidence, params = self._simple_classify(filtered_text)
             
-            # Use LangChain prompt template
-            prompt = self.prompt_template.format_messages(
-                filtered_text=filtered_text,
-                chat_history=chat_history,
-                format_instructions=self.output_parser.get_format_instructions()
-            )
+            # Only use expensive API if classification is very uncertain (confidence < 0.4)
+            if confidence < 0.4:
+                try:
+                    # Get chat history from memory
+                    chat_history = self.memory.chat_memory.messages if self.memory.chat_memory else []
+                    
+                    # Use LangChain prompt template
+                    prompt = self.prompt_template.format_messages(
+                        filtered_text=filtered_text,
+                        chat_history=chat_history,
+                        format_instructions=self.output_parser.get_format_instructions()
+                    )
+                    
+                    # Process with LLM (with timeout)
+                    response = await asyncio.wait_for(self.llm.ainvoke(prompt), timeout=8.0)
+                    
+                    try:
+                        # Parse structured output
+                        result = self.output_parser.parse(response.content)
+                        
+                        # Save to memory
+                        self.memory.chat_memory.add_user_message(filtered_text)
+                        self.memory.chat_memory.add_ai_message(response.content)
+                        
+                        return {
+                            **state,
+                            "intent_type": result.intent,
+                            "intent_confidence": result.confidence,
+                            "parameters": result.parameters,
+                            "ambiguous": result.ambiguous,
+                            "clarification_needed": result.ambiguous,
+                        }
+                    except:
+                        # Fallback if parsing fails
+                        pass
+                except Exception as e:
+                    print(f"⚠️ Intent classification API failed, using fallback: {e}")
             
-            # Process with LLM
-            response = await self.llm.ainvoke(prompt)
-            
-            try:
-                # Parse structured output
-                result = self.output_parser.parse(response.content)
-                
-                # Save to memory
-                self.memory.chat_memory.add_user_message(filtered_text)
-                self.memory.chat_memory.add_ai_message(response.content)
-                
-                return {
-                    **state,
-                    "intent_type": result.intent,
-                    "intent_confidence": result.confidence,
-                    "parameters": result.parameters,
-                    "ambiguous": result.ambiguous,
-                    "clarification_needed": result.ambiguous,
-                }
-            except:
-                # Fallback classification
-                intent, confidence, params = self._simple_classify(filtered_text)
-                return {
-                    **state,
-                    "intent_type": intent,
-                    "intent_confidence": confidence,
-                    "parameters": params,
-                    "ambiguous": confidence < 0.7,
-                    "clarification_needed": confidence < 0.5,
-                }
-            
-        except Exception as e:
+            # Use enhanced fallback result
             return {
                 **state,
-                "intent_type": "unknown",
-                "intent_confidence": 0.0,
-                "parameters": {},
-                "ambiguous": True,
-                "clarification_needed": True,
+                "intent_type": intent,
+                "intent_confidence": confidence,
+                "parameters": params,
+                "ambiguous": confidence < 0.7,
+                "clarification_needed": confidence < 0.5,
+            }
+            
+        except Exception as e:
+            # Always fallback to simple classification
+            intent, confidence, params = self._simple_classify(state.get("filtered_text", ""))
+            return {
+                **state,
+                "intent_type": intent,
+                "intent_confidence": max(0.6, confidence),  # Boost confidence in fallback
+                "parameters": params,
+                "ambiguous": False,  # Don't ask for clarification in fallback mode
+                "clarification_needed": False,
                 "agent_errors": state.get("agent_errors", []) + [f"Intent Router error: {str(e)}"]
             }
     
     def _simple_classify(self, text: str) -> tuple:
-        """Simple fallback classification"""
+        """Enhanced fallback classification with original command preservation"""
         text_lower = text.lower()
         
-        style_keywords = ["color", "font", "size", "bold", "italic", "background"]
+        style_keywords = ["color", "font", "size", "bold", "italic", "background", "gradient"]
         layout_keywords = ["center", "align", "position", "margin", "padding", "layout"]
         content_keywords = ["text", "title", "content", "add", "remove", "change"]
         
+        # Enhanced parameter extraction
+        params = {
+            "original_command": text,
+            "text": text_lower
+        }
+        
         if any(keyword in text_lower for keyword in style_keywords):
-            return "style", 0.8, {"type": "style_change"}
+            params["type"] = "style_change"
+            # Extract color information
+            colors = ["pink", "blue", "red", "green", "yellow", "purple", "black", "white", "orange", "gray"]
+            for color in colors:
+                if color in text_lower:
+                    params["detected_color"] = color
+                    break
+            # Check for gradient
+            if "gradient" in text_lower or ("with" in text_lower and "purple" in text_lower):
+                params["has_gradient"] = True
+            return "style", 0.9, params
         elif any(keyword in text_lower for keyword in layout_keywords):
-            return "layout", 0.8, {"type": "layout_change"}
+            params["type"] = "layout_change"
+            return "layout", 0.8, params
         elif any(keyword in text_lower for keyword in content_keywords):
-            return "content", 0.8, {"type": "content_change"}
+            params["type"] = "content_change"
+            return "content", 0.8, params
         else:
-            return "unknown", 0.3, {}
+            return "unknown", 0.3, params
 
 class ContextualEditorAgent:
     """Agent 3: Edits HTML using LangChain tools"""
@@ -490,13 +734,104 @@ Please analyze and propose specific changes:""")
             }
     
     def _simple_analysis(self, html: str, intent: str, params: dict) -> tuple:
-        """Simple fallback analysis"""
-        if intent == "style":
-            return ["body"], {"css_updates": {"color": "blue"}}, True
+        """Enhanced fallback analysis for common commands"""
+        target_elements = []
+        changes = {"intent": intent, "parameters": params}
+        edit_safe = True
+        
+        # Get the original voice input to analyze
+        voice_input = params.get("original_command", "").lower()
+        if not voice_input:
+            # Try to get from the filtered text or any available text
+            voice_input = params.get("text", "").lower()
+        
+        # Parse color and gradient information
+        color_info = self._parse_color_command(voice_input)
+        target_info = self._parse_target_elements(voice_input)
+        
+        # Build comprehensive changes dictionary
+        if intent == "style" and color_info:
+            changes.update({
+                "intent": "style",
+                "parameters": {
+                    "color": color_info.get("color", "pink"),
+                    "target": target_info.get("targets", ["header", "footer"]),
+                    "gradient": color_info.get("gradient", False),
+                    "secondary_color": color_info.get("secondary_color", "purple")
+                },
+                "css_updates": self._generate_color_css(color_info, target_info)
+            })
+            target_elements = target_info.get("targets", ["header", "footer"])
         elif intent == "content":
-            return ["h1"], {"content_updates": {"text": "Updated Title"}}, True
+            target_elements = ["h1"]
+            changes = {"content_updates": {"text": "Updated Title"}}
         else:
-            return [], {}, False
+            target_elements = ["body"]
+            changes = {"css_updates": {"color": "blue"}}
+        
+        return target_elements, changes, edit_safe
+    
+    def _parse_color_command(self, text: str) -> Dict[str, Any]:
+        """Parse color information from voice command"""
+        color_info = {}
+        
+        # Common colors
+        colors = ["pink", "blue", "red", "green", "yellow", "purple", "black", "white", "orange", "gray"]
+        for color in colors:
+            if color in text:
+                color_info["color"] = color
+                break
+        
+        # Check for gradient keywords
+        if "gradient" in text or ("with" in text and "purple" in text and "pink" in text):
+            color_info["gradient"] = True
+            color_info["secondary_color"] = "purple" if "purple" in text else "blue"
+        
+        return color_info
+    
+    def _parse_target_elements(self, text: str) -> Dict[str, Any]:
+        """Parse target elements from voice command"""
+        target_info = {"targets": []}
+        
+        # Common target elements
+        if "header" in text:
+            target_info["targets"].append("header")
+        if "footer" in text:
+            target_info["targets"].append("footer")
+        if "background" in text:
+            target_info["targets"].append("background")
+        if "button" in text:
+            target_info["targets"].append("button")
+        if "title" in text or "heading" in text:
+            target_info["targets"].append("title")
+        
+        # Default to header if no specific target found
+        if not target_info["targets"]:
+            target_info["targets"] = ["header"]
+        
+        return target_info
+    
+    def _generate_color_css(self, color_info: Dict[str, Any], target_info: Dict[str, Any]) -> Dict[str, str]:
+        """Generate CSS rules for color changes"""
+        css_updates = {}
+        
+        primary_color = color_info.get("color", "pink")
+        secondary_color = color_info.get("secondary_color", "purple")
+        is_gradient = color_info.get("gradient", False)
+        
+        for target in target_info.get("targets", []):
+            if is_gradient:
+                if target == "header":
+                    css_updates["header_background"] = f"linear-gradient(135deg, {primary_color}, {secondary_color})"
+                elif target == "footer":
+                    css_updates["footer_background"] = f"linear-gradient(135deg, {primary_color}, {secondary_color})"
+            else:
+                if target == "header":
+                    css_updates["header_background"] = primary_color
+                elif target == "footer":
+                    css_updates["footer_background"] = primary_color
+        
+        return css_updates
 
 class RAGEnabledResponseAgent:
     """Agent 4: Uses RAG with LangChain memory"""

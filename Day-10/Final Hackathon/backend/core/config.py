@@ -7,8 +7,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings(BaseSettings):
-    # API Configuration
+    # API Configuration (Primary and Backup Keys)
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_API_KEY2: str = os.getenv("GEMINI_API_KEY2", "")
     
     # Server Configuration
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
@@ -42,8 +43,8 @@ class Settings(BaseSettings):
     # JWT Configuration
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-this-in-production")
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
-    REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))  # 8 hours
+    REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))  # 30 days
     
     class Config:
         env_file = ".env"
@@ -65,6 +66,23 @@ class Settings(BaseSettings):
     def cors_origins(self) -> List[str]:
         """Get CORS origins as a list."""
         return self.CORS_ORIGINS
+    
+    def get_available_api_keys(self) -> List[str]:
+        """Get all available Gemini API keys."""
+        keys = []
+        if self.GEMINI_API_KEY:
+            keys.append(self.GEMINI_API_KEY)
+        if self.GEMINI_API_KEY2:
+            keys.append(self.GEMINI_API_KEY2)
+        return keys
+    
+    def get_primary_api_key(self) -> str:
+        """Get the primary API key."""
+        return self.GEMINI_API_KEY
+    
+    def get_fallback_api_key(self) -> str:
+        """Get the fallback API key."""
+        return self.GEMINI_API_KEY2
 
 # Global settings instance
 _settings = None

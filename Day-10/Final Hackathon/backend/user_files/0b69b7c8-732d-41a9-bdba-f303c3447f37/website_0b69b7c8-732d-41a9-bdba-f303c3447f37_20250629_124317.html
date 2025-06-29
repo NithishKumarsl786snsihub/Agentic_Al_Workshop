@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Creative Agency Website">
+<title>Creative Spark Agency</title>
+<style>
+body {
+  font-family: 'Arial', sans-serif;
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+  background-color: #f4f4f4;
+  color: #333;
+  transition: background-color 0.3s ease;
+}
+
+header {
+  background-color: #333;
+  color: #fff;
+  padding: 20px 0;
+  text-align: center;
+}
+
+header h1 {
+  font-size: 2.5em;
+  margin: 0;
+}
+
+nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+
+nav li {
+  display: inline;
+  margin: 0 10px;
+}
+
+nav a {
+  color: #fff;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+nav a:hover {
+  color: #ffcc00;
+}
+
+section {
+  padding: 40px;
+}
+
+.portfolio {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+}
+
+.portfolio-item {
+  width: 30%;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.portfolio-item img {
+  width: 100%;
+  transition: transform 0.3s ease;
+}
+
+.portfolio-item img:hover {
+  transform: scale(1.1);
+}
+
+.services {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+}
+
+.service {
+  width: 30%;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.team {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+}
+
+.team-member {
+  width: 30%;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.team-member img {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  margin-bottom: 10px;
+}
+
+.case-study {
+  margin-bottom: 20px;
+  border: 1px solid #ccc;
+  padding: 20px;
+}
+
+footer {
+  background-color: #333;
+  color: #fff;
+  padding: 20px 0;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .portfolio-item, .service, .team-member {
+    width: 45%;
+  }
+}
+
+@media (max-width: 480px) {
+  .portfolio-item, .service, .team-member {
+    width: 100%;
+  }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Creative Spark Agency</h1>
+  <nav>
+    <ul>
+      <li><a href="#">Home</a></li>
+      <li><a href="#">Portfolio</a></li>
+      <li><a href="#">Services</a></li>
+      <li><a href="#">Team</a></li>
+      <li><a href="#">Contact</a></li>
+    </ul>
+  </nav>
+</header>
+
+<section class="portfolio">
+  <div class="portfolio-item"><img src="portfolio1.jpg" alt="Portfolio Item 1"></div>
+  <div class="portfolio-item"><img src="portfolio2.jpg" alt="Portfolio Item 2"></div>
+  <div class="portfolio-item"><img src="portfolio3.jpg" alt="Portfolio Item 3"></div>
+</section>
+
+<section class="services">
+  <div class="service"><h3>Branding</h3><p>Lorem ipsum dolor sit amet.</p></div>
+  <div class="service"><h3>Web Design</h3><p>Lorem ipsum dolor sit amet.</p></div>
+  <div class="service"><h3>Marketing</h3><p>Lorem ipsum dolor sit amet.</p></div>
+</section>
+
+<section class="team">
+  <div class="team-member"><img src="team1.jpg" alt="Team Member 1"><h4>John Doe</h4><p>CEO</p></div>
+  <div class="team-member"><img src="team2.jpg" alt="Team Member 2"><h4>Jane Doe</h4><p>Designer</p></div>
+  <div class="team-member"><img src="team3.jpg" alt="Team Member 3"><h4>Peter Jones</h4><p>Developer</p></div>
+</section>
+
+<section>
+  <h2>Case Studies</h2>
+  <div class="case-study"><h3>Project 1</h3><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p></div>
+  <div class="case-study"><h3>Project 2</h3><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p></div>
+</section>
+
+<footer>
+  <p>&copy; 2023 Creative Spark Agency</p>
+</footer>
+
+</body>
+</html>

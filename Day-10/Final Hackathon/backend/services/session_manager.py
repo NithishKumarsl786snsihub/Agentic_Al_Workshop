@@ -24,6 +24,58 @@ class SessionManager:
         except:
             self.collection = self.chroma_client.create_collection("website_sessions")
     
+    def _ensure_session_exists(self, session_id: str, default_html: str = "<html><body>Default Website</body></html>") -> None:
+        """Ensure a session exists, create it if it doesn't exist"""
+        if session_id not in self.sessions:
+            print(f"🔄 Session {session_id} not found in memory, attempting to restore from ChromaDB...")
+            
+            # Try to restore from ChromaDB
+            try:
+                results = self.collection.get(
+                    where={"session_id": session_id},
+                    limit=50
+                )
+                
+                if results and results["documents"]:
+                    # Restore session from ChromaDB
+                    latest_html = results["documents"][-1]  # Get the latest HTML
+                    latest_metadata = results["metadatas"][-1]
+                    
+                    session_data = {
+                        "session_id": session_id,
+                        "created_at": latest_metadata.get("timestamp", datetime.now().isoformat()),
+                        "initial_prompt": latest_metadata.get("prompt", "Restored session"),
+                        "current_html": latest_html,
+                        "history": [],
+                        "undo_stack": [],
+                        "redo_stack": [],
+                        "current_index": len(results["documents"]) - 1
+                    }
+                    
+                    # Rebuild history from ChromaDB results
+                    for i, (doc, meta) in enumerate(zip(results["documents"], results["metadatas"])):
+                        session_data["history"].append({
+                            "timestamp": meta.get("timestamp", datetime.now().isoformat()),
+                            "action": meta.get("action", "edit"),
+                            "html_content": doc,
+                            "prompt": meta.get("prompt", "")
+                        })
+                    
+                    self.sessions[session_id] = session_data
+                    print(f"✅ Session {session_id} restored from ChromaDB with {len(session_data['history'])} history items")
+                    return
+                    
+            except Exception as e:
+                print(f"⚠️ Could not restore session from ChromaDB: {e}")
+            
+            # If restoration fails, create a new session
+            print(f"🔨 Creating new session {session_id}")
+            self.create_session(
+                session_id=session_id,
+                initial_prompt="Auto-restored session",
+                html_content=default_html
+            )
+    
     def create_session(self, session_id: str, initial_prompt: str, html_content: str) -> Dict[str, Any]:
         """Create a new session"""
         session_data = {
@@ -47,23 +99,26 @@ class SessionManager:
         self.sessions[session_id] = session_data
         
         # Store in ChromaDB
-        self.collection.add(
-            documents=[html_content],
-            metadatas=[{
-                "session_id": session_id,
-                "timestamp": datetime.now().isoformat(),
-                "action": "create",
-                "prompt": initial_prompt
-            }],
-            ids=[f"{session_id}_0"]
-        )
+        try:
+            self.collection.add(
+                documents=[html_content],
+                metadatas=[{
+                    "session_id": session_id,
+                    "timestamp": datetime.now().isoformat(),
+                    "action": "create",
+                    "prompt": initial_prompt
+                }],
+                ids=[f"{session_id}_0"]
+            )
+        except Exception as e:
+            print(f"⚠️ Could not save session to ChromaDB: {e}")
         
         return session_data
     
     def add_to_history(self, session_id: str, html_content: str, action: str, prompt: Optional[str] = None) -> None:
-        """Add a new state to session history"""
-        if session_id not in self.sessions:
-            raise ValueError(f"Session {session_id} not found")
+        """Add a new state to session history - auto-creates session if not found"""
+        # Ensure session exists (restore from ChromaDB or create new)
+        self._ensure_session_exists(session_id, html_content)
         
         session = self.sessions[session_id]
         
@@ -92,16 +147,19 @@ class SessionManager:
         session["history"].append(history_entry)
         
         # Store in ChromaDB
-        self.collection.add(
-            documents=[html_content],
-            metadatas=[{
-                "session_id": session_id,
-                "timestamp": datetime.now().isoformat(),
-                "action": action,
-                "prompt": prompt or ""
-            }],
-            ids=[f"{session_id}_{session['current_index']}"]
-        )
+        try:
+            self.collection.add(
+                documents=[html_content],
+                metadatas=[{
+                    "session_id": session_id,
+                    "timestamp": datetime.now().isoformat(),
+                    "action": action,
+                    "prompt": prompt or ""
+                }],
+                ids=[f"{session_id}_{session['current_index']}"]
+            )
+        except Exception as e:
+            print(f"⚠️ Could not save to ChromaDB: {e}")
         
         # Limit history size (keep last 50 states)
         if len(session["undo_stack"]) > 50:
@@ -109,8 +167,8 @@ class SessionManager:
     
     def undo(self, session_id: str) -> Dict[str, Any]:
         """Undo the last action"""
-        if session_id not in self.sessions:
-            raise ValueError(f"Session {session_id} not found")
+        # Ensure session exists
+        self._ensure_session_exists(session_id)
         
         session = self.sessions[session_id]
         
@@ -140,8 +198,8 @@ class SessionManager:
     
     def redo(self, session_id: str) -> Dict[str, Any]:
         """Redo the last undone action"""
-        if session_id not in self.sessions:
-            raise ValueError(f"Session {session_id} not found")
+        # Ensure session exists
+        self._ensure_session_exists(session_id)
         
         session = self.sessions[session_id]
         
@@ -171,10 +229,17 @@ class SessionManager:
     
     def get_session_history(self, session_id: str) -> List[Dict[str, Any]]:
         """Get session history"""
-        if session_id not in self.sessions:
-            raise ValueError(f"Session {session_id} not found")
+        # Ensure session exists
+        self._ensure_session_exists(session_id)
         
         return self.sessions[session_id]["history"]
+    
+    def get_current_html(self, session_id: str) -> str:
+        """Get the current HTML content for a session"""
+        # Ensure session exists
+        self._ensure_session_exists(session_id)
+        
+        return self.sessions[session_id]["current_html"]
     
     def save_html_file(self, session_id: str, html_content: str, filename: str) -> str:
         """Save HTML content to file"""
@@ -232,8 +297,8 @@ class SessionManager:
     
     def get_session_stats(self, session_id: str) -> Dict[str, Any]:
         """Get session statistics"""
-        if session_id not in self.sessions:
-            return {}
+        # Ensure session exists
+        self._ensure_session_exists(session_id)
         
         session = self.sessions[session_id]
         

@@ -42,19 +42,32 @@ export const useSessionStorage = (): UseSessionStorageReturn => {
         const storedSessions = localStorage.getItem('voice-website-sessions');
         const currentSessionId = localStorage.getItem('current-session-id');
         
+        console.log('📦 Loading sessions from localStorage:', { 
+          hasStoredSessions: !!storedSessions, 
+          currentSessionId 
+        });
+        
         if (storedSessions) {
           const parsedSessions: SessionData[] = JSON.parse(storedSessions);
           setSessions(parsedSessions);
+          console.log('📋 Loaded sessions:', parsedSessions.length, 'sessions');
           
           if (currentSessionId) {
             const current = parsedSessions.find(s => s.sessionId === currentSessionId);
             if (current) {
               setCurrentSession(current);
+              console.log('✅ Current session set:', current.sessionId);
+            } else {
+              console.log('⚠️ Current session ID not found in stored sessions');
             }
+          } else {
+            console.log('ℹ️ No current session ID in localStorage');
           }
+        } else {
+          console.log('ℹ️ No stored sessions found in localStorage');
         }
       } catch (error) {
-        console.error('Error loading sessions from localStorage:', error);
+        console.error('❌ Error loading sessions from localStorage:', error);
       }
     }
   }, [isClient]);
@@ -64,8 +77,9 @@ export const useSessionStorage = (): UseSessionStorageReturn => {
     if (isClient && typeof window !== 'undefined' && sessions.length > 0) {
       try {
         localStorage.setItem('voice-website-sessions', JSON.stringify(sessions));
+        console.log('💾 Saved sessions to localStorage:', sessions.length, 'sessions');
       } catch (error) {
-        console.error('Error saving sessions to localStorage:', error);
+        console.error('❌ Error saving sessions to localStorage:', error);
       }
     }
   }, [sessions, isClient]);
@@ -75,23 +89,27 @@ export const useSessionStorage = (): UseSessionStorageReturn => {
     if (isClient && typeof window !== 'undefined' && currentSession) {
       try {
         localStorage.setItem('current-session-id', currentSession.sessionId);
+        console.log('💾 Saved current session ID to localStorage:', currentSession.sessionId);
       } catch (error) {
-        console.error('Error saving current session ID:', error);
+        console.error('❌ Error saving current session ID:', error);
       }
     }
   }, [currentSession, isClient]);
 
   const saveSession = useCallback((sessionData: SessionData) => {
+    console.log('💾 Saving session:', sessionData.sessionId);
     setSessions(prevSessions => {
       const existingIndex = prevSessions.findIndex(s => s.sessionId === sessionData.sessionId);
       
       if (existingIndex >= 0) {
         // Update existing session
+        console.log('🔄 Updating existing session:', sessionData.sessionId);
         const updatedSessions = [...prevSessions];
         updatedSessions[existingIndex] = sessionData;
         return updatedSessions;
       } else {
         // Add new session
+        console.log('➕ Adding new session:', sessionData.sessionId);
         return [...prevSessions, sessionData];
       }
     });

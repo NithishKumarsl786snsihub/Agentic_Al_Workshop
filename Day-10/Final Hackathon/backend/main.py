@@ -32,6 +32,9 @@ from services.html_editor import HTMLEditor
 from services.session_manager import SessionManager
 from services.intelligent_response import IntelligentResponseService
 from services.conversation_manager import ConversationManager
+from services.ai_analyzer import ai_assistant  # Import the AI assistant
+from services.image_service import image_service
+from services.storage_service import storage_service
 from core.config import get_settings
 
 # Initialize FastAPI app
@@ -152,6 +155,83 @@ class ConversationListResponse(BaseModel):
     total: int
     success: bool
 
+# NEW: Storage and Persistence Models
+class SaveCodeRequest(BaseModel):
+    session_id: str
+    html_content: str
+    css_content: Optional[str] = None
+    js_content: Optional[str] = None
+    project_name: Optional[str] = None
+    description: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+    auto_save: bool = False
+
+class SaveCodeResponse(BaseModel):
+    success: bool
+    message: str
+    project_id: str
+    saved_at: datetime
+    file_path: Optional[str] = None
+
+class LoadCodeRequest(BaseModel):
+    project_id: Optional[str] = None
+    session_id: Optional[str] = None
+
+class LoadCodeResponse(BaseModel):
+    success: bool
+    html_content: str
+    css_content: Optional[str] = None
+    js_content: Optional[str] = None
+    project_name: Optional[str] = None
+    description: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+    last_modified: datetime
+    project_id: str
+
+class ProjectListResponse(BaseModel):
+    success: bool
+    projects: List[Dict[str, Any]]
+    total: int
+    has_more: bool
+
+class DeleteProjectRequest(BaseModel):
+    project_id: str
+
+class AutoSaveStateRequest(BaseModel):
+    session_id: str
+    html_content: str
+    css_content: Optional[str] = None
+    js_content: Optional[str] = None
+    cursor_position: Optional[Dict[str, Any]] = None
+    scroll_position: Optional[Dict[str, Any]] = None
+
+class AutoSaveStateResponse(BaseModel):
+    success: bool
+    last_saved: datetime
+    session_id: str
+
+class RestoreStateRequest(BaseModel):
+    session_id: str
+
+class RestoreStateResponse(BaseModel):
+    success: bool
+    html_content: Optional[str] = None
+    css_content: Optional[str] = None
+    js_content: Optional[str] = None
+    cursor_position: Optional[Dict[str, Any]] = None
+    scroll_position: Optional[Dict[str, Any]] = None
+    last_modified: Optional[datetime] = None
+
+class ExitWarningRequest(BaseModel):
+    session_id: str
+    has_unsaved_changes: bool
+    current_content: Optional[str] = None
+
+class ExitWarningResponse(BaseModel):
+    should_warn: bool
+    message: str
+    unsaved_changes_count: int
+
 @app.get("/")
 async def root():
     return {
@@ -224,18 +304,32 @@ async def get_status():
 async def generate_website(request: GenerateRequest):
     """Generate a website from a text prompt using Gemini AI"""
     try:
+        print(f"🚀 Starting website generation for prompt: {request.prompt}")
+        
         # Generate or use existing session ID
         session_id = request.session_id or str(uuid.uuid4())
+        print(f"📋 Using session ID: {session_id}")
         
         # Generate HTML content
+        print("🎨 Generating HTML content...")
         html_content = await website_generator.generate_website(request.prompt)
+        print(f"✅ HTML generated successfully, length: {len(html_content)}")
+        
+        # Fix broken images with placeholders
+        print("🖼️ Fixing broken images...")
+        html_content = image_service.replace_broken_images_in_html(html_content)
+        print("✅ Images fixed successfully")
         
         # Create session and save initial state
+        print("💾 Creating session...")
         session_manager.create_session(session_id, request.prompt, html_content)
+        print("✅ Session created successfully")
         
         # Save to file
+        print("💾 Saving to file...")
         filename = f"website_{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
         file_path = session_manager.save_html_file(session_id, html_content, filename)
+        print(f"✅ File saved: {filename}")
         
         return GenerateResponse(
             html_content=html_content,
@@ -245,15 +339,26 @@ async def generate_website(request: GenerateRequest):
             message="Website generated successfully"
         )
     except Exception as e:
+        print(f"❌ Generation failed with error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
 
 @app.post("/edit", response_model=EditResponse)
 async def edit_website(request: EditRequest):
-    """Edit existing website based on voice command using LangGraph agents"""
+    """Edit existing website with AI-powered code assistant"""
     try:
+        print(f"🤖 Processing edit request with AI assistant: {request.edit_command}")
+        
+        # Use AI assistant to analyze the request and generate intelligent response
+        ai_response = ai_assistant.create_intelligent_response(
+            html_content=request.html_content,
+            edit_request=request.edit_command
+        )
+        
         # Use LangGraph agents if available, otherwise fallback
         if LANGGRAPH_AVAILABLE and langgraph_editor:
-            print(f"🤖 Processing with LangGraph agents: {request.edit_command}")
+            print(f"🔮 Processing with LangGraph agents: {request.edit_command}")
             
             # Process through the complete LangGraph workflow
             result = await langgraph_editor.process_voice_command(
@@ -263,62 +368,128 @@ async def edit_website(request: EditRequest):
             )
             
             if result["success"]:
-                # Update session history
+                # Fix broken images in the edited content
+                result["html_content"] = image_service.replace_broken_images_in_html(result["html_content"])
+                
+                # Update session history with the new HTML content
                 session_manager.add_to_history(
                     request.session_id, 
                     result["html_content"], 
+                    "edit",
                     request.edit_command
                 )
+                
+                # Enhance the LangGraph response with AI assistant insights
+                enhanced_response = {
+                    **ai_response,
+                    "message": result["response"],
+                    "langgraph_used": True,
+                    "confidence": result["metadata"].get("confidence", 0.85),
+                    "validation_score": result["validation_score"],
+                    "warnings": result["warnings"],
+                    "agent_errors": result["agent_errors"],
+                    "processing_time": result["processing_time"],
+                    "metadata": {
+                        **ai_response["metadata"],
+                        **result["metadata"]
+                    }
+                }
                 
                 return EditResponse(
                     html_content=result["html_content"],
                     success=True,
                     message=result["response"],
                     changes_made=[f"Intent: {result['metadata'].get('intent', 'unknown')}"],
-                    intelligent_response={
-                        "message": result["response"],
-                        "confidence": result["metadata"].get("confidence", 0.0),
-                        "validation_score": result["validation_score"],
-                        "warnings": result["warnings"],
-                        "agent_errors": result["agent_errors"],
-                        "processing_time": result["processing_time"],
-                        "langgraph_used": True,
-                        "metadata": result["metadata"]
-                    }
+                    intelligent_response=enhanced_response
                 )
             else:
                 # LangGraph failed, fallback to simple editor
-                print("⚠️ LangGraph failed, falling back to simple editor")
+                print("⚠️ LangGraph failed, falling back to simple editor with AI assistant")
                 
-        # Fallback to original implementation
-        print(f"🔄 Processing with fallback editor: {request.edit_command}")
+        # Fallback to original implementation with AI enhancement
+        print(f"🔄 Processing with enhanced editor + AI assistant: {request.edit_command}")
         result = await html_editor.edit_html(request.html_content, request.edit_command)
         
-        # Generate intelligent response
-        intelligent_resp = await intelligent_response.generate_confirmation_response(
-            command=request.edit_command,
-            edit_result=result,
-            session_id=request.session_id,
-            language="en"
-        )
-        
-        # Update session history
-        session_manager.add_to_history(
-            request.session_id, 
-            result["html_content"], 
-            request.edit_command
-        )
-        
-        return EditResponse(
-            html_content=result["html_content"],
-            success=result["success"],
-            message=result.get("error", "Edit completed successfully"),
-            changes_made=result.get("changes", []),
-            intelligent_response=intelligent_resp
-        )
+        # Generate enhanced intelligent response with AI insights
+        if result["success"]:
+            # Fix broken images in the edited content
+            result["html_content"] = image_service.replace_broken_images_in_html(result["html_content"])
+            
+            # Use AI assistant's response instead of basic intelligent response
+            enhanced_ai_response = {
+                **ai_response,
+                "langgraph_used": False,
+                "edit_success": True,
+                "changes_applied": result.get("changes", []),
+                "processing_method": "enhanced_fallback"
+            }
+            
+            # Update session history
+            session_manager.add_to_history(
+                request.session_id, 
+                result["html_content"], 
+                "edit",
+                request.edit_command
+            )
+            
+            return EditResponse(
+                html_content=result["html_content"],
+                success=True,
+                message=ai_response["message"],  # Use AI-generated message
+                changes_made=result.get("changes", []),
+                intelligent_response=enhanced_ai_response
+            )
+        else:
+            # Handle edit failure with AI assistance
+            fallback_response = {
+                **ai_response,
+                "edit_success": False,
+                "error": result.get("error", "Unknown error"),
+                "suggestions": [
+                    "Let me try a different approach to your request",
+                    "Could you rephrase the command more specifically?",
+                    "I can help you break this down into smaller steps"
+                ]
+            }
+            
+            return EditResponse(
+                html_content=request.html_content,  # Return original content
+                success=False,
+                message=f"I couldn't complete that change, but I have some suggestions. {ai_response['message']}",
+                changes_made=[],
+                intelligent_response=fallback_response
+            )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Edit failed: {str(e)}")
+        print(f"❌ Edit failed with error: {str(e)}")
+        
+        # Generate AI-powered error response
+        error_response = {
+            "type": "error_assistance",
+            "message": "I encountered an issue with that request. Let me help you troubleshoot.",
+            "suggestions": [
+                "Try describing the change in simpler terms",
+                "Make sure you're targeting the right element",
+                "Would you like me to suggest an alternative approach?"
+            ],
+            "follow_up_question": "Can you tell me more specifically what you're trying to achieve?",
+            "editable": True,
+            "language": "English",
+            "voice_friendly": True,
+            "metadata": {
+                "error_type": "processing_error",
+                "timestamp": datetime.now().isoformat(),
+                "original_command": request.edit_command
+            }
+        }
+        
+        return EditResponse(
+            html_content=request.html_content,
+            success=False,
+            message="I ran into a technical issue, but I'm here to help you fix it.",
+            changes_made=[],
+            intelligent_response=error_response
+        )
 
 @app.post("/save", response_model=SaveResponse)
 async def save_website(request: SaveRequest):
@@ -496,10 +667,219 @@ async def delete_conversation(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete conversation: {str(e)}")
 
+# Storage and Persistence Endpoints
+@app.post("/projects/save", response_model=SaveCodeResponse)
+async def save_project(
+    request: SaveCodeRequest,
+    current_user = Depends(get_current_active_user)
+):
+    """Save project to MongoDB with persistence"""
+    try:
+        result = await storage_service.save_project(
+            user_id=current_user.id,
+            session_id=request.session_id,
+            html_content=request.html_content,
+            css_content=request.css_content,
+            js_content=request.js_content,
+            project_name=request.project_name,
+            description=request.description,
+            metadata=request.metadata,
+            auto_save=request.auto_save
+        )
+        
+        if result["success"]:
+            return SaveCodeResponse(
+                success=True,
+                message=result["message"],
+                project_id=result["project_id"],
+                saved_at=result["saved_at"],
+                file_path=result.get("file_path")
+            )
+        else:
+            raise HTTPException(status_code=500, detail=result["message"])
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save project: {str(e)}")
+
+@app.post("/projects/load", response_model=LoadCodeResponse)  
+async def load_project(
+    request: LoadCodeRequest,
+    current_user = Depends(get_current_active_user)
+):
+    """Load project from MongoDB"""
+    try:
+        result = await storage_service.load_project(
+            user_id=current_user.id,
+            project_id=request.project_id,
+            session_id=request.session_id
+        )
+        
+        if result["success"]:
+            return LoadCodeResponse(
+                success=True,
+                html_content=result["html_content"],
+                css_content=result.get("css_content"),
+                js_content=result.get("js_content"),
+                project_name=result.get("project_name"),
+                description=result.get("description"),
+                metadata=result.get("metadata", {}),
+                last_modified=result["last_modified"],
+                project_id=result["project_id"]
+            )
+        else:
+            raise HTTPException(status_code=404, detail=result["message"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load project: {str(e)}")
+
+@app.get("/projects", response_model=ProjectListResponse)
+async def list_projects(
+    limit: int = 10,
+    offset: int = 0,
+    search: Optional[str] = None,
+    current_user = Depends(get_current_active_user)
+):
+    """List user projects with pagination and search"""
+    try:
+        result = await storage_service.list_user_projects(
+            user_id=current_user.id,
+            limit=limit,
+            offset=offset,
+            search=search
+        )
+        
+        if result["success"]:
+            return ProjectListResponse(
+                success=True,
+                projects=result["projects"],
+                total=result["total"],
+                has_more=result["has_more"]
+            )
+        else:
+            raise HTTPException(status_code=500, detail=result["message"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list projects: {str(e)}")
+
+@app.delete("/projects/{project_id}")
+async def delete_project(
+    project_id: str,
+    current_user = Depends(get_current_active_user)
+):
+    """Delete a project"""
+    try:
+        result = await storage_service.delete_project(
+            user_id=current_user.id,
+            project_id=project_id
+        )
+        
+        if result["success"]:
+            return {"success": True, "message": result["message"]}
+        else:
+            raise HTTPException(status_code=404, detail=result["message"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete project: {str(e)}")
+
+@app.post("/autosave", response_model=AutoSaveStateResponse)
+async def auto_save_state(request: AutoSaveStateRequest):
+    """Auto-save current state for recovery"""
+    try:
+        result = await storage_service.auto_save_state(
+            session_id=request.session_id,
+            html_content=request.html_content,
+            css_content=request.css_content,
+            js_content=request.js_content,
+            cursor_position=request.cursor_position,
+            scroll_position=request.scroll_position
+        )
+        
+        if result["success"]:
+            return AutoSaveStateResponse(
+                success=True,
+                last_saved=result["last_saved"],
+                session_id=request.session_id
+            )
+        else:
+            raise HTTPException(status_code=500, detail=result["message"])
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Auto-save failed: {str(e)}")
+
+@app.post("/restore", response_model=RestoreStateResponse)
+async def restore_state(request: RestoreStateRequest):
+    """Restore auto-saved state"""
+    try:
+        result = await storage_service.restore_state(request.session_id)
+        
+        if result["success"]:
+            return RestoreStateResponse(
+                success=True,
+                html_content=result.get("html_content"),
+                css_content=result.get("css_content"),
+                js_content=result.get("js_content"),
+                cursor_position=result.get("cursor_position"),
+                scroll_position=result.get("scroll_position"),
+                last_modified=result.get("last_modified")
+            )
+        else:
+            return RestoreStateResponse(
+                success=False,
+                html_content=None,
+                css_content=None,
+                js_content=None
+            )
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to restore state: {str(e)}")
+
+@app.post("/check-unsaved", response_model=ExitWarningResponse)
+async def check_unsaved_changes(request: ExitWarningRequest):
+    """Check for unsaved changes before exit"""
+    try:
+        result = await storage_service.check_unsaved_changes(
+            session_id=request.session_id,
+            current_content=request.current_content or ""
+        )
+        
+        return ExitWarningResponse(
+            should_warn=result["should_warn"],
+            message=result["message"],
+            unsaved_changes_count=result["unsaved_changes_count"]
+        )
+        
+    except Exception as e:
+        return ExitWarningResponse(
+            should_warn=True,
+            message="Unable to check for unsaved changes. Consider saving before exiting.",
+            unsaved_changes_count=0
+        )
+
 @app.get("/.well-known/appspecific/com.chrome.devtools.json")
 async def chrome_devtools_handler():
     """Handle Chrome DevTools protocol"""
     return {"message": "Voice Website Generator API"}
+
+# Image proxy routes to handle broken image requests
+@app.get("/{image_name:path}")
+async def proxy_image(image_name: str):
+    """Proxy image requests to placeholder services"""
+    # Only handle image files
+    if image_name.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')):
+        return await image_service.proxy_image(image_name.split('/')[-1])
+    else:
+        raise HTTPException(status_code=404, detail="Not found")
+
+@app.get("/images/{image_name}")
+async def get_placeholder_image(image_name: str):
+    """Get placeholder image by name"""
+    return await image_service.proxy_image(image_name)
 
 if __name__ == "__main__":
     uvicorn.run(

@@ -83,9 +83,9 @@ export default function DashboardPage() {
           <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-400 opacity-10 rounded-full blur-3xl animate-pulse"></div>
           <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-pink-400 opacity-8 rounded-full blur-3xl animate-pulse delay-700"></div>
           <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-blue-400 opacity-5 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        </div>
+      </div>
 
-        {/* Header */}
+      {/* Header */}
         <header className="relative z-10 bg-white/90 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
@@ -93,39 +93,39 @@ export default function DashboardPage() {
               <Link href="/dashboard" className="flex items-center space-x-3 group">
                 <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center transform group-hover:scale-110 transition-all duration-300">
                   <Sparkles className="w-6 h-6 text-white" />
-                </div>
-                <div>
+            </div>
+            <div>
                   <h1 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-purple-600 bg-clip-text text-transparent">
                     VoiceWeb
                   </h1>
                   <p className="text-xs text-gray-600">Dashboard</p>
-                </div>
-              </Link>
+            </div>
+          </Link>
 
-              {/* User Menu */}
+          {/* User Menu */}
               <div className="flex items-center space-x-4">
                 <div className="hidden sm:flex items-center space-x-3">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                     <User className="w-5 h-5 text-white" />
-                  </div>
+              </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">{user.full_name || user.username}</p>
                     <p className="text-xs text-gray-600 capitalize">{user.subscription_tier || 'Free'}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="p-2 rounded-lg bg-white/80 border border-gray-300 text-gray-700 hover:bg-white hover:border-red-400 hover:text-red-600 transition-all duration-300"
-                  title="Logout"
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
               </div>
             </div>
+            <button
+              onClick={handleLogout}
+                  className="p-2 rounded-lg bg-white/80 border border-gray-300 text-gray-700 hover:bg-white hover:border-red-400 hover:text-red-600 transition-all duration-300"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+              </div>
           </div>
-        </header>
+        </div>
+      </header>
 
-        {/* Main Content */}
+      {/* Main Content */}
         <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Welcome Section */}
           <div className="mb-8">
@@ -134,7 +134,7 @@ export default function DashboardPage() {
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">
                     Welcome back, {user.username}! 👋
-                  </h2>
+            </h2>
                   <p className="text-gray-600">Ready to create something amazing today?</p>
                 </div>
                 <div className="mt-4 sm:mt-0 flex items-center space-x-3">
@@ -231,7 +231,7 @@ export default function DashboardPage() {
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-gray-900">Recent Projects</h3>
-                <button 
+                <button
                   onClick={() => handleCreateProject('voice')}
                   className="px-4 py-2 bg-white/80 border border-gray-300 text-gray-700 rounded-lg hover:bg-white hover:border-purple-400 hover:text-purple-600 transition-all duration-300 flex items-center gap-2 text-sm"
                 >
@@ -314,19 +314,19 @@ export default function DashboardPage() {
                   <h4 className="font-semibold text-gray-900 mb-2">✨ Be Specific</h4>
                   <p className="text-sm text-gray-600">
                     "Create a portfolio with dark theme and contact form"
-                  </p>
-                </div>
+                    </p>
+                  </div>
                 <div className="bg-white/60 rounded-xl p-4">
                   <h4 className="font-semibold text-gray-900 mb-2">🎯 Use Examples</h4>
                   <p className="text-sm text-gray-600">
-                    "Make it look like Apple's website with clean design"
-                  </p>
-                </div>
+                      "Make it look like Apple's website with clean design"
+                    </p>
+                  </div>
                 <div className="bg-white/60 rounded-xl p-4">
                   <h4 className="font-semibold text-gray-900 mb-2">🔄 Iterate Freely</h4>
                   <p className="text-sm text-gray-600">
                     "Change header to blue and add hero section"
-                  </p>
+                    </p>
                 </div>
               </div>
             </div>
@@ -338,7 +338,7 @@ export default function DashboardPage() {
       {showCreateModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}>
           <CreatePage onClose={() => setShowCreateModal(false)} />
-        </div>
+    </div>
       )}
     </>
   );

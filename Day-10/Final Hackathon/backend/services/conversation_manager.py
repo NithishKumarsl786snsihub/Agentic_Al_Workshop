@@ -341,3 +341,4 @@ class ConversationManager:
         except Exception as e:
             print(f"Error deleting conversation: {e}")
             return False 
+ 

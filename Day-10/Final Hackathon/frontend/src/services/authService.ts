@@ -50,7 +50,8 @@ class AuthService {
 
   private async makeRequest<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retries: number = 2
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     
@@ -60,21 +61,61 @@ class AuthService {
       },
     };
 
-    const response = await fetch(url, {
-      ...defaultOptions,
-      ...options,
-      headers: {
-        ...defaultOptions.headers,
-        ...options.headers,
-      },
-    });
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(url, {
+          ...defaultOptions,
+          ...options,
+          headers: {
+            ...defaultOptions.headers,
+            ...options.headers,
+          },
+        });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+          
+          // Don't retry on auth errors (401, 403)
+          if (response.status === 401 || response.status === 403) {
+            throw new Error(errorData.detail || `Authentication failed: ${response.status}`);
+          }
+          
+          // Don't retry on client errors (400-499) except rate limiting (429)
+          if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+            throw new Error(errorData.detail || `Client error: ${response.status}`);
+          }
+          
+          // Retry on server errors (500+) and rate limiting
+          if (attempt < retries && (response.status >= 500 || response.status === 429)) {
+            const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
+            console.warn(`Request failed with ${response.status}, retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          }
+          
+          throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        }
+
+        return response.json();
+      } catch (error) {
+        // Handle network errors (no response)
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+          if (attempt < retries) {
+            const delay = Math.pow(2, attempt) * 1000;
+            console.warn(`Network error, retrying in ${delay}ms...`, error.message);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          } else {
+            throw new Error(`Network error: Unable to connect to server. Please check your internet connection.`);
+          }
+        }
+        
+        // Re-throw other errors (like auth errors)
+        throw error;
+      }
     }
-
-    return response.json();
+    
+    throw new Error('Max retries exceeded');
   }
 
   private getAuthHeaders(): Record<string, string> {
@@ -153,13 +194,20 @@ class AuthService {
   }
 
   async validateToken(): Promise<boolean> {
+    // First check local expiration to avoid unnecessary network calls
+    if (this.isTokenExpired()) {
+      console.log('🕐 Token expired locally, skipping network validation');
+      return false;
+    }
+    
     try {
       await this.makeRequest('/auth/validate-token', {
         method: 'GET',
         headers: this.getAuthHeaders(),
-      });
+      }, 1); // Only 1 retry for validation
       return true;
     } catch (error) {
+      console.warn('🌐 Token validation failed:', error);
       return false;
     }
   }
@@ -170,6 +218,10 @@ class AuthService {
       localStorage.setItem('access_token', tokens.access_token);
       localStorage.setItem('refresh_token', tokens.refresh_token);
       localStorage.setItem('token_expires_in', tokens.expires_in.toString());
+      
+      // Store token creation time for expiration checking
+      const expirationTime = Date.now() + (tokens.expires_in * 1000);
+      localStorage.setItem('token_expires_at', expirationTime.toString());
     }
   }
 
@@ -214,12 +266,35 @@ class AuthService {
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('token_expires_in');
+      localStorage.removeItem('token_expires_at');
       localStorage.removeItem('user');
     }
   }
 
+  isTokenExpired(): boolean {
+    if (typeof window === 'undefined') return true;
+    
+    const expiresAt = localStorage.getItem('token_expires_at');
+    if (!expiresAt) return true;
+    
+    // Consider token expired if it expires within the next 5 minutes
+    const buffer = 5 * 60 * 1000; // 5 minutes in milliseconds
+    return Date.now() >= (parseInt(expiresAt) - buffer);
+  }
+
   isAuthenticated(): boolean {
-    return !!this.getToken() && !!this.getUser();
+    const hasToken = !!this.getToken();
+    const hasUser = !!this.getUser();
+    const isNotExpired = !this.isTokenExpired();
+    
+    return hasToken && hasUser && isNotExpired;
+  }
+
+  getTokenExpirationTime(): number | null {
+    if (typeof window === 'undefined') return null;
+    
+    const expiresAt = localStorage.getItem('token_expires_at');
+    return expiresAt ? parseInt(expiresAt) : null;
   }
 
   // Auto-refresh token when it expires

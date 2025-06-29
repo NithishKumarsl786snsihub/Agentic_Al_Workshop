@@ -11,6 +11,7 @@ interface VoiceButtonProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
+  currentText?: string; // Allow syncing current text from parent
 }
 
 const VoiceButtonComponent: React.FC<VoiceButtonProps> = ({
@@ -18,7 +19,8 @@ const VoiceButtonComponent: React.FC<VoiceButtonProps> = ({
   onInterimTranscript,
   className,
   size = 'md',
-  disabled = false
+  disabled = false,
+  currentText = ''
 }) => {
   const {
     isListening,
@@ -27,22 +29,63 @@ const VoiceButtonComponent: React.FC<VoiceButtonProps> = ({
     isSupported,
     startListening,
     stopListening,
-    resetTranscript
+    resetTranscript,
+    syncTranscript
   } = useVoiceRecognition();
 
-  // Pass transcript to parent when it changes
+  // Debounced sync to prevent rapid updates
+  const syncTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const lastSyncedTextRef = React.useRef<string>('');
+
+  // Sync external text changes with voice recognition (debounced)
+  React.useEffect(() => {
+    if (currentText !== transcript && currentText !== lastSyncedTextRef.current && !isListening) {
+      // Clear existing timeout
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+      
+      // Debounce sync to prevent conflicts
+      syncTimeoutRef.current = setTimeout(() => {
+        syncTranscript(currentText);
+        lastSyncedTextRef.current = currentText;
+      }, 200);
+    }
+  }, [currentText, transcript, syncTranscript, isListening]);
+
+  // Pass transcript to parent when it changes (debounced)
+  const transcriptTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   React.useEffect(() => {
     if (transcript) {
+      // Clear existing timeout
+      if (transcriptTimeoutRef.current) {
+        clearTimeout(transcriptTimeoutRef.current);
+      }
+      
       if (isListening && onInterimTranscript) {
-        // Real-time interim results while listening
-        onInterimTranscript(transcript);
-      } else if (!isListening && transcript) {
+        // Debounce interim results to prevent glitching
+        transcriptTimeoutRef.current = setTimeout(() => {
+          onInterimTranscript(transcript);
+        }, 100);
+      } else if (!isListening && transcript && transcript !== lastSyncedTextRef.current) {
         // Final result when stopped listening
         onTranscript(transcript);
-        resetTranscript();
+        lastSyncedTextRef.current = transcript;
       }
     }
-  }, [transcript, isListening, onTranscript, onInterimTranscript, resetTranscript]);
+  }, [transcript, isListening, onTranscript, onInterimTranscript]);
+
+  // Cleanup timeouts
+  React.useEffect(() => {
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+      if (transcriptTimeoutRef.current) {
+        clearTimeout(transcriptTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleClick = () => {
     if (disabled) return;
@@ -78,7 +121,7 @@ const VoiceButtonComponent: React.FC<VoiceButtonProps> = ({
   }
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-1">
       <div className="relative">
         <button
           onClick={handleClick}
@@ -96,7 +139,7 @@ const VoiceButtonComponent: React.FC<VoiceButtonProps> = ({
             }
             ${className || ''}
           `}
-          title={isListening ? 'Stop recording' : 'Start voice input'}
+          title={isListening ? 'Click to stop recording (you can also type while listening!)' : 'Click to start voice input'}
         >
           {isListening ? (
             <Volume2 className={`${iconSizes[size]} text-white animate-pulse`} />
@@ -107,42 +150,33 @@ const VoiceButtonComponent: React.FC<VoiceButtonProps> = ({
 
         {/* Recording indicator */}
         {isListening && (
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-400 rounded-full animate-ping" />
+          <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-400 rounded-full animate-ping" />
         )}
 
-        {/* Error message */}
+        {/* Error message - More compact */}
         {error && (
-          <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-red-500 text-white text-xs rounded-lg shadow-lg whitespace-nowrap z-10 border border-red-400">
-            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-red-500 rotate-45 border-l border-t border-red-400"></div>
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 px-2 py-1 bg-red-500 text-white text-xs rounded shadow-lg whitespace-nowrap z-10">
             {error}
           </div>
         )}
       </div>
 
-      {/* Procedure Indicator */}
-      <div className="flex flex-col items-center gap-1">
+      {/* Compact Status Indicator */}
+      <div className="flex flex-col items-center">
         {isListening ? (
-          <div className="flex items-center gap-2">
-            <div className="flex space-x-1">
-              <div className="w-1 h-3 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-              <div className="w-1 h-3 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-              <div className="w-1 h-3 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          <div className="flex items-center gap-1">
+            <div className="flex space-x-0.5">
+              <div className="w-0.5 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-0.5 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-0.5 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
             </div>
-            <span className="text-xs text-red-600 font-medium">Listening...</span>
+            <span className="text-xs text-red-600 font-medium ml-1">Listening</span>
           </div>
         ) : (
           <span className="text-xs text-gray-600 font-medium">
-            {transcript ? 'Voice captured' : 'Tap to speak'}
+            {transcript ? '+ Voice/Type' : 'Tap to speak'}
           </span>
         )}
-        
-        {/* Voice procedure steps */}
-        <div className="text-xs text-gray-500 text-center max-w-32">
-          {isListening 
-            ? "Speak clearly and tap again when done"
-            : "Hold and speak your website description"
-          }
-        </div>
       </div>
     </div>
   );

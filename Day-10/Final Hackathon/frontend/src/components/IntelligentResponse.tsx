@@ -22,7 +22,6 @@ interface IntelligentResponseComponentProps {
   response: IntelligentResponse;
   onSuggestionClick?: (suggestion: string) => void;
   onOptionClick?: (option: string) => void;
-  onEditResponse?: (newCommand: string) => void;
   className?: string;
 }
 
@@ -30,14 +29,15 @@ export const IntelligentResponseComponent: React.FC<IntelligentResponseComponent
   response,
   onSuggestionClick,
   onOptionClick,
-  onEditResponse,
   className
 }) => {
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [showOptions, setShowOptions] = useState(true);
 
   const handlePlayVoice = () => {
     if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(response.message);
+      const textToSpeak = response.follow_up_question || response.message;
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
       utterance.rate = 0.9;
       utterance.pitch = 1;
       utterance.volume = 0.8;
@@ -46,8 +46,40 @@ export const IntelligentResponseComponent: React.FC<IntelligentResponseComponent
   };
 
   const handleCopyText = () => {
-    navigator.clipboard.writeText(response.message);
+    const textToCopy = `${response.message}${response.follow_up_question ? `\n\nFollow-up: ${response.follow_up_question}` : ''}`;
+    navigator.clipboard.writeText(textToCopy);
   };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    if (onSuggestionClick) {
+      onSuggestionClick(suggestion);
+    }
+  };
+
+  // Determine the response type and styling
+  const getResponseTypeInfo = () => {
+    if (response.type === 'error_assistance') {
+      return {  
+        badge: 'Troubleshooting',
+        badgeClass: 'error-badge',
+        icon: <HelpCircle className="w-3 h-3" />
+      };
+    } else if (response.follow_up_question || response.suggestions?.length) {
+      return {
+        badge: 'Smart Assistant',
+        badgeClass: 'smart-badge',
+        icon: <Sparkles className="w-3 h-3" />
+      };
+    } else {
+      return {
+        badge: 'Confirmed',
+        badgeClass: 'confirmation-badge',
+        icon: <CheckCircle className="w-3 h-3" />
+      };
+    }
+  };
+
+  const typeInfo = getResponseTypeInfo();
 
   return (
     <div className={clsx('chatbot-conversation', className)}>
@@ -55,7 +87,7 @@ export const IntelligentResponseComponent: React.FC<IntelligentResponseComponent
         .chatbot-conversation {
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 12px;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
         }
         
@@ -67,334 +99,274 @@ export const IntelligentResponseComponent: React.FC<IntelligentResponseComponent
         }
         
         .ai-avatar {
-          width: 32px;
-          height: 32px;
-          background: #10b981;
+          width: 28px;
+          height: 28px;
+          background: linear-gradient(135deg, #8b5cf6, #a855f7);
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
-          margin-top: 4px;
+          margin-top: 2px;
+          box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);
         }
         
         .message-content {
           flex: 1;
-          background: #2d2d2d;
-          border-radius: 16px 16px 16px 4px;
-          padding: 16px;
+          background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+          border-radius: 12px 12px 12px 4px;
+          padding: 14px;
           color: #ffffff;
-          font-size: 14px;
+          font-size: 13px;
           line-height: 1.5;
           position: relative;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          border: 1px solid rgba(139, 92, 246, 0.2);
         }
         
         .message-header {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           margin-bottom: 8px;
         }
         
         .ai-label {
           font-weight: 600;
-          color: #10b981;
-          font-size: 12px;
+          color: #a855f7;
+          font-size: 11px;
         }
         
         .message-type-badge {
-          padding: 2px 8px;
-          border-radius: 12px;
-          font-size: 10px;
+          padding: 2px 6px;
+          border-radius: 8px;
+          font-size: 9px;
           font-weight: 600;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.3px;
+          display: flex;
+          align-items: center;
+          gap: 3px;
         }
         
         .confirmation-badge {
-          background: #10b981;
+          background: #059669;
           color: white;
         }
         
-        .clarification-badge {
-          background: #f59e0b;
+        .smart-badge {
+          background: linear-gradient(135deg, #8b5cf6, #a855f7);
+          color: white;
+        }
+        
+        .error-badge {
+          background: #dc2626;
           color: white;
         }
         
         .message-text {
-          color: #e5e5e5;
-          margin-bottom: 12px;
+          color: #e5e7eb;
+          margin-bottom: 10px;
+          font-weight: 400;
         }
         
         .message-actions {
           display: flex;
-          gap: 8px;
-          margin-top: 12px;
+          gap: 6px;
+          margin-top: 10px;
         }
         
         .action-button {
           background: transparent;
-          border: 1px solid #404040;
-          color: #cccccc;
-          padding: 6px 8px;
+          border: 1px solid #374151;
+          color: #9ca3af;
+          padding: 4px 6px;
           border-radius: 6px;
           cursor: pointer;
           transition: all 0.2s ease;
           display: flex;
           align-items: center;
           justify-content: center;
+          font-size: 11px;
         }
         
         .action-button:hover {
-          background: #404040;
-          border-color: #10b981;
-          color: #10b981;
+          background: rgba(139, 92, 246, 0.1);
+          border-color: #8b5cf6;
+          color: #a855f7;
         }
         
         .follow-up-section {
-          margin-top: 16px;
-          padding: 12px;
-          background: #1a1a1a;
+          margin-top: 12px;
+          padding: 10px;
+          background: rgba(139, 92, 246, 0.05);
           border-radius: 8px;
-          border-left: 3px solid #10b981;
+          border-left: 3px solid #8b5cf6;
         }
         
         .follow-up-label {
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 600;
-          color: #10b981;
-          margin-bottom: 6px;
+          color: #a855f7;
+          margin-bottom: 4px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
         }
         
         .follow-up-text {
-          color: #e5e5e5;
-          font-size: 13px;
-        }
-        
-        .options-section {
-          margin-top: 16px;
-        }
-        
-        .options-label {
-          font-size: 13px;
-          font-weight: 600;
-          color: #cccccc;
-          margin-bottom: 12px;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-        
-        .option-button {
-          display: block;
-          width: 100%;
-          text-align: left;
-          background: #1a1a1a;
-          border: 1px solid #404040;
-          color: #e5e5e5;
-          padding: 12px 16px;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          margin-bottom: 8px;
-          font-size: 13px;
-        }
-        
-        .option-button:hover {
-          background: #10b981;
-          border-color: #10b981;
-          color: white;
-          transform: translateY(-1px);
+          color: #d1d5db;
+          font-size: 12px;
+          font-style: italic;
         }
         
         .suggestions-section {
-          margin-top: 16px;
+          margin-top: 12px;
+        }
+        
+        .suggestions-header {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 8px;
+          cursor: pointer;
+          padding: 4px 0;
+        }
+        
+        .suggestions-label {
+          font-size: 11px;
+          font-weight: 600;
+          color: #a855f7;
+          display: flex;
+          align-items: center;
+          gap: 4px;
         }
         
         .suggestions-toggle {
-          background: transparent;
-          border: none;
-          color: #cccccc;
-          padding: 8px 0;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 13px;
-          font-weight: 600;
+          color: #6b7280;
+          transition: transform 0.2s ease;
         }
         
-        .suggestions-toggle:hover {
-          color: #10b981;
+        .suggestions-toggle.expanded {
+          transform: rotate(90deg);
         }
         
         .suggestion-button {
-          display: flex;
-          align-items: center;
-          gap: 12px;
+          display: block;
           width: 100%;
           text-align: left;
-          background: #1a1a1a;
-          border: 1px solid #404040;
-          color: #e5e5e5;
-          padding: 12px 16px;
+          background: rgba(139, 92, 246, 0.05);
+          border: 1px solid rgba(139, 92, 246, 0.2);
+          color: #d1d5db;
+          padding: 8px 12px;
           border-radius: 8px;
           cursor: pointer;
           transition: all 0.2s ease;
-          margin-bottom: 8px;
-          font-size: 13px;
+          margin-bottom: 6px;
+          font-size: 12px;
+          position: relative;
         }
         
         .suggestion-button:hover {
-          background: #10b981;
-          border-color: #10b981;
-          color: white;
+          background: rgba(139, 92, 246, 0.1);
+          border-color: #8b5cf6;
+          color: #ffffff;
           transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2);
         }
         
-        .suggestion-button:hover .suggestion-icon {
-          transform: scale(1.1);
-          color: white;
+        .suggestion-button:last-child {
+          margin-bottom: 0;
         }
         
-        .suggestion-icon {
-          color: #10b981;
-          transition: all 0.2s ease;
+        .metadata-info {
+          margin-top: 10px;
+          padding: 6px 8px;
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 6px;
+          font-size: 10px;
+          color: #6b7280;
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
         
-        .details-section {
-          margin-top: 16px;
-          padding: 12px;
-          background: #1a1a1a;
-          border-radius: 8px;
+        .confidence-indicator {
+          display: flex;
+          align-items: center;
+          gap: 4px;
         }
         
-        .details-summary {
-          cursor: pointer;
-          color: #888888;
-          font-size: 12px;
-          transition: color 0.2s ease;
+        .confidence-bar {
+          width: 30px;
+          height: 3px;
+          background: #374151;
+          border-radius: 2px;
+          overflow: hidden;
         }
         
-        .details-summary:hover {
-          color: #cccccc;
-        }
-        
-        .details-content {
-          margin-top: 8px;
-          padding: 8px;
-          background: #0f0f0f;
-          border-radius: 4px;
-          border: 1px solid #333333;
-        }
-        
-        .details-pre {
-          font-size: 11px;
-          color: #888888;
-          overflow-x: auto;
-          white-space: pre-wrap;
+        .confidence-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #8b5cf6, #a855f7);
+          transition: width 0.5s ease;
         }
       `}</style>
 
-      {/* AI Message Bubble */}
       <div className="ai-message-bubble">
         <div className="ai-avatar">
           <Bot className="w-4 h-4 text-white" />
         </div>
         
         <div className="message-content">
-          {/* Message Header */}
           <div className="message-header">
             <span className="ai-label">AI Assistant</span>
-            <span className={clsx(
-              'message-type-badge',
-              response.type === 'confirmation' ? 'confirmation-badge' : 'clarification-badge'
-            )}>
-              {response.type === 'confirmation' ? 'Confirmation' : 'Clarification'}
-            </span>
+            <div className={`message-type-badge ${typeInfo.badgeClass}`}>
+              {typeInfo.icon}
+              {typeInfo.badge}
+            </div>
           </div>
-
-          {/* Main Message */}
+          
           <div className="message-text">
             {response.message}
-          </div>
-
-          {/* Message Actions */}
-          <div className="message-actions">
-            {response.voice_friendly && (
-              <button
-                onClick={handlePlayVoice}
-                className="action-button"
-                title="Play voice response"
-              >
-                <Volume2 className="w-4 h-4" />
-              </button>
-            )}
-            
-            <button
-              onClick={handleCopyText}
-              className="action-button"
-              title="Copy response"
-            >
-              <Copy className="w-4 h-4" />
-            </button>
           </div>
 
           {/* Follow-up Question */}
           {response.follow_up_question && (
             <div className="follow-up-section">
-              <div className="follow-up-label">Follow-up suggestion:</div>
-              <div className="follow-up-text">{response.follow_up_question}</div>
-            </div>
-          )}
-
-          {/* Clarification Options */}
-          {response.type === 'clarification' && response.options && response.options.length > 0 && (
-            <div className="options-section">
-              <div className="options-label">
-                <HelpCircle className="w-4 h-4" />
-                Please choose an option:
+              <div className="follow-up-label">
+                <HelpCircle className="w-3 h-3" />
+                Quick Question
               </div>
-              {response.options.map((option, index) => (
-                <button
-                  key={index}
-                  onClick={() => onOptionClick?.(option)}
-                  className="option-button"
-                >
-                  {option}
-                </button>
-              ))}
+              <div className="follow-up-text">
+                {response.follow_up_question}
+              </div>
             </div>
           )}
 
           {/* Smart Suggestions */}
           {response.suggestions && response.suggestions.length > 0 && (
             <div className="suggestions-section">
-              <button
+              <div 
+                className="suggestions-header"
                 onClick={() => setShowSuggestions(!showSuggestions)}
-                className="suggestions-toggle"
               >
-                <Lightbulb className="w-4 h-4" />
-                Smart Suggestions ({response.suggestions.length})
-                {showSuggestions ? (
-                  <ChevronDown className="w-4 h-4" />
-                ) : (
-                  <ChevronRight className="w-4 h-4" />
-                )}
-              </button>
+                <div className="suggestions-label">
+                  <Lightbulb className="w-3 h-3" />
+                  Smart Suggestions ({response.suggestions.length})
+                </div>
+                <ChevronRight className={`w-3 h-3 suggestions-toggle ${showSuggestions ? 'expanded' : ''}`} />
+              </div>
               
               {showSuggestions && (
                 <div>
                   {response.suggestions.map((suggestion, index) => (
                     <button
                       key={index}
-                      onClick={() => onSuggestionClick?.(suggestion)}
                       className="suggestion-button"
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      title="Click to apply this suggestion"
                     >
-                      <Sparkles className="w-4 h-4 suggestion-icon" />
-                      <span>{suggestion}</span>
+                      {suggestion}
                     </button>
                   ))}
                 </div>
@@ -402,19 +374,41 @@ export const IntelligentResponseComponent: React.FC<IntelligentResponseComponent
             </div>
           )}
 
-          {/* Technical Details */}
-          {response.metadata && Object.keys(response.metadata).length > 0 && (
-            <div className="details-section">
-              <details>
-                <summary className="details-summary">
-                  Technical Details
-                </summary>
-                <div className="details-content">
-                  <pre className="details-pre">
-                    {JSON.stringify(response.metadata, null, 2)}
-                  </pre>
+          {/* Action buttons */}
+          <div className="message-actions">
+            {response.voice_friendly && (
+              <button
+                className="action-button"
+                onClick={handlePlayVoice}
+                title="Listen to response"
+              >
+                <Volume2 className="w-3 h-3" />
+              </button>
+            )}
+            <button
+              className="action-button"
+              onClick={handleCopyText}
+              title="Copy message"
+            >
+              <Copy className="w-3 h-3" />
+            </button>
+          </div>
+
+          {/* Metadata and Confidence */}
+          {response.metadata && (
+            <div className="metadata-info">
+              <span>{response.metadata.website_type} • {response.metadata.intent}</span>
+              {response.metadata.confidence && (
+                <div className="confidence-indicator">
+                  <span>Confidence</span>
+                  <div className="confidence-bar">
+                    <div 
+                      className="confidence-fill" 
+                      style={{ width: `${response.metadata.confidence * 100}%` }}
+                    />
+                  </div>
                 </div>
-              </details>
+              )}
             </div>
           )}
         </div>

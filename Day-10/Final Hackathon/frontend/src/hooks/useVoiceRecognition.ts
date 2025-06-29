@@ -2,12 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-interface VoiceRecognitionResult {
-  transcript: string;
-  confidence: number;
-  isFinal: boolean;
-}
-
 interface UseVoiceRecognitionReturn {
   isListening: boolean;
   transcript: string;
@@ -19,6 +13,8 @@ interface UseVoiceRecognitionReturn {
   startListening: () => void;
   stopListening: () => void;
   resetTranscript: () => void;
+  appendToTranscript: (text: string) => void;
+  syncTranscript: (text: string) => void;
 }
 
 export const useVoiceRecognition = (): UseVoiceRecognitionReturn => {
@@ -30,13 +26,33 @@ export const useVoiceRecognition = (): UseVoiceRecognitionReturn => {
   const [error, setError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState<boolean>(false);
   
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<any>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pauseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const baseTranscriptRef = useRef<string>('');
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const isProcessingRef = useRef<boolean>(false);
+
+  // Debounced state update to prevent glitching
+  const debouncedUpdateTranscript = useCallback((newTranscript: string, interim: string = '') => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      if (!isProcessingRef.current) {
+        isProcessingRef.current = true;
+        setTranscript(newTranscript);
+        setInterimTranscript(interim);
+        isProcessingRef.current = false;
+      }
+    }, 50); // 50ms debounce to prevent rapid updates
+  }, []);
 
   // Check for browser support
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       setIsSupported(!!SpeechRecognition);
       
       if (SpeechRecognition) {
@@ -52,12 +68,20 @@ export const useVoiceRecognition = (): UseVoiceRecognitionReturn => {
         recognitionRef.current.onstart = () => {
           setIsListening(true);
           setError(null);
+          // Clear any existing pause timeout
+          if (pauseTimeoutRef.current) {
+            clearTimeout(pauseTimeoutRef.current);
+            pauseTimeoutRef.current = null;
+          }
         };
         
-        recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+        recognitionRef.current.onresult = (event: any) => {
+          if (isProcessingRef.current) return; // Prevent overlapping processing
+          
           let finalText = '';
           let interimText = '';
           
+          // Process only the latest results to avoid glitching
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const result = event.results[i];
             if (result.isFinal) {
@@ -68,29 +92,74 @@ export const useVoiceRecognition = (): UseVoiceRecognitionReturn => {
             }
           }
           
+          const baseText = baseTranscriptRef.current;
+          
           if (finalText) {
-            const trimmedFinal = finalText.trim();
-            setFinalTranscript(trimmedFinal);
-            setTranscript(trimmedFinal);
+            // Handle final text - update immediately without debounce
+            const newBaseText = baseText + (baseText ? ' ' : '') + finalText.trim();
+            baseTranscriptRef.current = newBaseText;
+            setFinalTranscript(newBaseText);
+            setTranscript(newBaseText);
             setInterimTranscript('');
+            
+            // Reset pause timeout since we got final text
+            if (pauseTimeoutRef.current) {
+              clearTimeout(pauseTimeoutRef.current);
+            }
+            
+            // Set new pause timeout for 10 seconds
+            pauseTimeoutRef.current = setTimeout(() => {
+              if (recognitionRef.current) {
+                try {
+                  recognitionRef.current.stop();
+                } catch (e) {
+                  // Ignore errors during stop
+                }
+              }
+            }, 10000);
           } else if (interimText) {
-            const trimmedInterim = interimText.trim();
-            setInterimTranscript(trimmedInterim);
-            setTranscript(trimmedInterim);
+            // Handle interim text with debouncing to prevent glitching
+            const combinedText = baseText + (baseText ? ' ' : '') + interimText.trim();
+            debouncedUpdateTranscript(combinedText, interimText.trim());
           }
         };
         
-        recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
-          setError(`Speech recognition error: ${event.error}`);
+        recognitionRef.current.onerror = (event: any) => {
+          console.warn('Speech recognition error:', event.error);
+          
+          // Only show user-friendly errors
+          if (event.error === 'no-speech') {
+            setError('No speech detected. Please try again.');
+          } else if (event.error === 'network') {
+            setError('Network error. Please check your connection.');
+          } else if (event.error !== 'aborted') {
+            setError('Speech recognition error. Please try again.');
+          }
+          
           setIsListening(false);
+          isProcessingRef.current = false;
+          
+          // Clear timeouts on error
+          if (pauseTimeoutRef.current) {
+            clearTimeout(pauseTimeoutRef.current);
+            pauseTimeoutRef.current = null;
+          }
         };
         
         recognitionRef.current.onend = () => {
           setIsListening(false);
+          setInterimTranscript('');
+          isProcessingRef.current = false;
+          
+          // Clear timeouts when ending
+          if (pauseTimeoutRef.current) {
+            clearTimeout(pauseTimeoutRef.current);
+            pauseTimeoutRef.current = null;
+          }
         };
       }
     }
-  }, []);
+  }, []); // Remove isListening dependency to prevent re-renders
 
   const startListening = useCallback(() => {
     if (!recognitionRef.current || !isSupported) {
@@ -98,34 +167,75 @@ export const useVoiceRecognition = (): UseVoiceRecognitionReturn => {
       return;
     }
     
+    if (isListening) {
+      // If already listening, don't start again
+      return;
+    }
+    
     try {
       setError(null);
-      setTranscript('');
       setInterimTranscript('');
-      setFinalTranscript('');
+      isProcessingRef.current = false;
+      
+      // Clear any existing debounce
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      
       recognitionRef.current.start();
       
-      // Auto-stop after 4 seconds of silence
-      timeoutRef.current = setTimeout(() => {
-        if (recognitionRef.current && isListening) {
-          recognitionRef.current.stop();
+      // Set initial pause timeout for 10 seconds
+      pauseTimeoutRef.current = setTimeout(() => {
+        if (recognitionRef.current) {
+          try {
+            recognitionRef.current.stop();
+          } catch (e) {
+            // Ignore errors during stop
+          }
         }
-      }, 4000);
-    } catch (err) {
-      setError('Failed to start speech recognition');
+      }, 10000);
+    } catch (err: any) {
+      if (err.name !== 'InvalidStateError') {
+        setError('Failed to start speech recognition');
+      }
     }
   }, [isSupported, isListening]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        // Ignore errors during stop
+      }
     }
+    
+    // Clear all timeouts
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
+    if (pauseTimeoutRef.current) {
+      clearTimeout(pauseTimeoutRef.current);
+      pauseTimeoutRef.current = null;
+    }
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    
+    isProcessingRef.current = false;
   }, []);
 
   const resetTranscript = useCallback(() => {
+    // Clear all timeouts first
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    isProcessingRef.current = false;
+    baseTranscriptRef.current = '';
+    
     setTranscript('');
     setInterimTranscript('');
     setFinalTranscript('');
@@ -133,14 +243,50 @@ export const useVoiceRecognition = (): UseVoiceRecognitionReturn => {
     setError(null);
   }, []);
 
+  const appendToTranscript = useCallback((text: string) => {
+    const currentBase = baseTranscriptRef.current;
+    const newText = currentBase + (currentBase ? ' ' : '') + text.trim();
+    baseTranscriptRef.current = newText;
+    setTranscript(newText);
+    setFinalTranscript(newText);
+  }, []);
+
+  const syncTranscript = useCallback((text: string) => {
+    // Prevent sync during active voice processing
+    if (isProcessingRef.current) return;
+    
+    // Clear any pending debounced updates
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    // Sync manually edited text with the voice recognition system
+    baseTranscriptRef.current = text;
+    setTranscript(text);
+    setFinalTranscript(text);
+    setInterimTranscript('');
+  }, []);
+
   // Cleanup
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
       }
+      
+      // Clear all timeouts
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
+      }
+      if (pauseTimeoutRef.current) {
+        clearTimeout(pauseTimeoutRef.current);
+      }
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
       }
     };
   }, []);
@@ -156,13 +302,15 @@ export const useVoiceRecognition = (): UseVoiceRecognitionReturn => {
     startListening,
     stopListening,
     resetTranscript,
+    appendToTranscript,
+    syncTranscript,
   };
 };
 
 // Type declarations for Speech Recognition API
 declare global {
   interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
   }
 } 
