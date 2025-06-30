@@ -188,41 +188,42 @@ export default function CreatePage({ onClose }: CreatePageProps = {}) {
   const examples = [
     {
       title: "Portfolio Website",
-      description: "Modern portfolio with dark theme and animations",
+      description: "Personal portfolio landing page",
       icon: "🎨",
-      prompt: "Create a modern portfolio website with dark theme, smooth animations, hero section, about me, skills showcase, and contact form"
+      prompt: "Design a personal portfolio landing page with a hero introduction, short about section, project highlights, and contact info."
     },
     {
       title: "Startup Landing",
-      description: "Tech startup landing page with features",
+      description: "Tech startup landing page",
       icon: "🚀",
-      prompt: "Build a landing page for a tech startup with hero section, features grid, testimonials, pricing table, and call-to-action buttons"
+      prompt: "Create a clean landing page for a tech startup with a headline, feature highlights, short about section, and a call-to-action button."
     },
     {
       title: "Restaurant Site",
-      description: "Restaurant website with menu and booking",
+      description: "Restaurant landing page with menu preview",
       icon: "🍽️",
-      prompt: "Make a restaurant website with elegant design, menu showcase, photo gallery, reservation form, and contact information"
+      prompt: "Generate a landing page for a restaurant that includes a welcome section, cuisine highlight, sample menu items, and contact details."
     },
     {
       title: "Blog Homepage",
-      description: "Modern blog layout with article cards",
+      description: "Landing page for a modern blog",
       icon: "📝",
-      prompt: "Design a blog homepage with modern layout, featured articles, categories sidebar, author bio, and newsletter signup"
+      prompt: "Design a blog landing page with a featured articles section, short author intro, and links to categories or recent posts."
     },
     {
       title: "E-commerce Store",
-      description: "Online store with product catalog",
+      description: "Product-focused landing page",
       icon: "🛍️",
-      prompt: "Create an e-commerce website with product grid, shopping cart, product details page, and checkout process"
+      prompt: "Create an e-commerce landing page that includes a product showcase, key benefits, pricing overview, and a call-to-action."
     },
     {
       title: "Agency Site",
-      description: "Creative agency with services showcase",
+      description: "Creative agency landing page",
       icon: "💼",
-      prompt: "Build a creative agency website with portfolio gallery, services section, team members, and project case studies"
+      prompt: "Build a landing page for a creative agency with an intro section, service highlights, client list or logos, and contact info."
     }
   ]
+  
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">

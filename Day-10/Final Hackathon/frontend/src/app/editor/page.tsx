@@ -21,12 +21,14 @@ import {
   User,
   Send,
   X,
-  Volume2
+  Volume2,
+  Edit
 } from 'lucide-react';
 import { VoiceButton } from '../../components/VoiceButton';
 import { ClientOnly } from '../../components/ClientOnly';
 import { IntelligentResponseComponent } from '../../components/IntelligentResponse';
-import { apiService, IntelligentResponse } from '../../services/api';
+import ExitConfirmationModal from '../../components/ExitConfirmationModal';
+import { apiService, IntelligentResponse, EditorSaveRequest } from '../../services/api';
 import { useSessionStorage } from '../../hooks/useSessionStorage';
 import { useAuth } from '../../contexts/AuthContext';
 import { useVoiceRecognition } from '../../hooks/useVoiceRecognition';
@@ -116,68 +118,7 @@ const ChatVoiceButton: React.FC<{
 
 ChatVoiceButton.displayName = 'ChatVoiceButton';
 
-// Save Confirmation Modal Component
-const SaveConfirmationModal: React.FC<{
-  isOpen: boolean;
-  onSave: () => void;
-  onDiscard: () => void;
-  onCancel: () => void;
-  isSaving: boolean;
-}> = ({ isOpen, onSave, onDiscard, onCancel, isSaving }) => {
-  if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-200">
-        <div className="text-center">
-          <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Save className="w-6 h-6 text-white" />
-          </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">Save Changes?</h3>
-          <p className="text-gray-600 mb-6">Do you want to save your changes before exiting?</p>
-          
-          <div className="flex gap-3">
-            <button
-              onClick={onSave}
-              disabled={isSaving}
-              className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                'Save'
-              )}
-            </button>
-            <button
-              onClick={onDiscard}
-              disabled={isSaving}
-              className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all duration-300 disabled:opacity-50"
-            >
-              Don't Save
-            </button>
-            <button
-              onClick={onCancel}
-              disabled={isSaving}
-              className="px-4 py-3 bg-white border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all duration-300 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-          </div>
-          
-          {!isSaving && (
-            <p className="text-xs text-gray-500 mt-3">
-              Unsaved changes will be lost if you choose "Don't Save"
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export default function EditorPage() {
   const router = useRouter();
@@ -191,7 +132,7 @@ export default function EditorPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
@@ -210,6 +151,18 @@ export default function EditorPage() {
     intelligentResponse?: IntelligentResponse;
   }>>([]);
 
+  // Project-related state
+  const [currentProject, setCurrentProject] = useState<{
+    project_id: string;
+    project_name: string;
+    description: string;
+    html_content: string;
+    last_modified: string;
+    mode: 'edit' | 'view';
+  } | null>(null);
+  const [isEditingProjectName, setIsEditingProjectName] = useState(false);
+  const [projectNameInput, setProjectNameInput] = useState('');
+
   const editCommandRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -222,84 +175,112 @@ export default function EditorPage() {
 
   // Track unsaved changes
   useEffect(() => {
-    setHasUnsavedChanges(htmlContent !== originalHtmlContent);
+    const hasChanges = htmlContent !== originalHtmlContent;
+    setHasUnsavedChanges(hasChanges);
   }, [htmlContent, originalHtmlContent]);
 
-  // Initialize HTML content from session or MongoDB - ONLY after authentication is ready
+  // Initialize content from project or session - ONLY after authentication is ready
   useEffect(() => {
     const initializeContent = async () => {
       // Wait for authentication to be fully initialized
       if (authLoading) {
-        console.log('🔄 Waiting for authentication to initialize...');
         return;
       }
 
       // Check if user is authenticated
       if (!isAuthenticated) {
-        console.log('🚫 User not authenticated, redirecting to login...');
         router.push('/auth/login');
         return;
       }
 
-      // Wait for session storage to be ready (it takes a moment to load from localStorage)
-      if (!currentSession) {
-        console.log('⏳ Waiting for session data to load...');
-        // Give session storage more time to initialize
-        return;
-      }
-
-      // Now we have both auth and session data - proceed with initialization
-      console.log('📝 Initializing editor with session:', currentSession.sessionId);
-      console.log('👤 User authenticated:', user?.username);
-      
       try {
-      setHtmlContent(currentSession.htmlContent);
+        // Check if we're editing an existing project
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectId = urlParams.get('project');
+        const mode = urlParams.get('mode') as 'edit' | 'view' || 'edit';
+
+        if (projectId) {
+          // Load project from sessionStorage first (set by dashboard)
+          const storedProject = sessionStorage.getItem('currentProject');
+          if (storedProject) {
+            const projectData = JSON.parse(storedProject);
+            setCurrentProject(projectData);
+            setProjectNameInput(projectData.project_name);
+            setHtmlContent(projectData.html_content);
+            setOriginalHtmlContent(projectData.html_content);
+            setIsLoading(false);
+            return;
+          }
+
+          // Fallback: Load project from API
+          try {
+            const response = await apiService.loadProject(projectId);
+            if (response.success) {
+              const projectData = {
+                project_id: projectId,
+                project_name: response.project_name || 'Untitled Project',
+                description: response.description || '',
+                html_content: response.html_content,
+                last_modified: response.last_modified,
+                mode: mode
+              };
+              setCurrentProject(projectData);
+              setProjectNameInput(projectData.project_name);
+              setHtmlContent(response.html_content);
+              setOriginalHtmlContent(response.html_content);
+              setIsLoading(false);
+              return;
+            }
+          } catch (error) {
+            console.error('Failed to load project:', error);
+          }
+        }
+
+        // Fallback to session-based editing (legacy mode)
+        if (!currentSession) {
+          return;
+        }
+        
+        setHtmlContent(currentSession.htmlContent);
         setOriginalHtmlContent(currentSession.htmlContent);
         
         // Load from MongoDB if available - with proper error handling
         try {
-          console.log('🔄 Loading session from MongoDB...');
           const sessionData = await apiService.getSessionHistory(currentSession.sessionId);
           if (sessionData.success && sessionData.html_content) {
-            console.log('✅ Session loaded from MongoDB');
             setHtmlContent(sessionData.html_content);
             setOriginalHtmlContent(sessionData.html_content);
-    } else {
-            console.log('ℹ️ Using local session data (MongoDB data not available)');
           }
         } catch (error) {
-          console.warn('⚠️ Could not load session from MongoDB, using local data:', error);
-          // Don't throw error, just use local data
+          console.warn('Could not load session from MongoDB, using local data:', error);
         }
         
         setIsLoading(false);
-        console.log('✅ Editor initialization complete');
       } catch (error) {
-        console.error('❌ Error during editor initialization:', error);
+        console.error('Error during editor initialization:', error);
         setIsLoading(false);
         setMessage({ type: 'error', text: 'Failed to initialize editor' });
       }
     };
 
-    // Add a small delay to ensure session storage has time to load
+    // Add a small delay to ensure everything is ready
     const initTimer = setTimeout(() => {
       initializeContent();
     }, 100);
 
     return () => clearTimeout(initTimer);
-  }, [currentSession, router, authLoading, isAuthenticated, user]);
+  }, [router, authLoading, isAuthenticated, user, currentSession]);
 
   // Additional effect to handle the case where we're still waiting for session after auth is ready
   useEffect(() => {
-    if (!authLoading && isAuthenticated && !currentSession && !isLoading) {
-      console.log('⚠️ Auth ready but no session found, redirecting to home...');
+    if (!authLoading && isAuthenticated && !currentSession && !currentProject && !isLoading) {
       const redirectTimer = setTimeout(() => {
         router.push('/');
       }, 2000); // Wait 2 seconds for session to potentially load
       
       return () => clearTimeout(redirectTimer);
     }
-  }, [authLoading, isAuthenticated, currentSession, isLoading, router]);
+  }, [authLoading, isAuthenticated, currentSession, currentProject, isLoading, router]);
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -314,18 +295,64 @@ export default function EditorPage() {
     }
   }, [message]);
 
-  // Handle browser/tab close warning
+  // Handle browser/tab close warning and back button
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges) {
         e.preventDefault();
-        e.returnValue = '';
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
       }
     };
 
+    // Handle browser back button
+    const handlePopState = (e: PopStateEvent) => {
+      if (hasUnsavedChanges && !showExitModal) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Prevent navigation by pushing the current state back
+        window.history.pushState(null, '', window.location.href);
+        
+        // Show exit modal
+        setShowExitModal(true);
+        setPendingNavigation('/dashboard');
+      }
+    };
+
+    // Handle keyboard shortcuts (Ctrl+W, Alt+F4, etc.)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+W or Cmd+W (close tab)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
+        if (hasUnsavedChanges) {
+          e.preventDefault();
+          setShowExitModal(true);
+          setPendingNavigation('/dashboard');
+        }
+      }
+      // Escape key
+      if (e.key === 'Escape' && !showExitModal) {
+        if (hasUnsavedChanges) {
+          setShowExitModal(true);
+          setPendingNavigation('/dashboard');
+        } else {
+          router.push('/dashboard');
+        }
+      }
+    };
+
+    // Add initial history state to detect back button
+    window.history.pushState(null, '', window.location.href);
+
     window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedChanges]);
+    window.addEventListener('popstate', handlePopState);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [hasUnsavedChanges, showExitModal, router]);
 
   // Fix iframe preview update issue with robust refresh logic
   useEffect(() => {
@@ -508,19 +535,49 @@ export default function EditorPage() {
   };
 
   const handleSave = async () => {
-    if (!currentSession) return;
-
     setIsSaving(true);
     try {
-      const response = await apiService.saveWebsite({
-        html_content: htmlContent,
-        session_id: currentSession.sessionId
-      });
+      if (currentProject) {
+        // Update existing project
+        const response = await apiService.updateProject(currentProject.project_id, {
+          html_content: htmlContent,
+          project_name: currentProject.project_name
+        });
 
-      if (response.success) {
-        setOriginalHtmlContent(htmlContent);
-        await saveToMongoDB(htmlContent);
-        setMessage({ type: 'success', text: `Website saved as ${response.filename}` });
+        if (response.success) {
+          setOriginalHtmlContent(htmlContent);
+          // Update current project data
+          setCurrentProject(prev => prev ? { 
+            ...prev, 
+            html_content: htmlContent,
+            last_modified: new Date().toISOString()
+          } : null);
+          
+          setMessage({ 
+            type: 'success', 
+            text: `Project "${currentProject.project_name}" updated successfully` 
+          });
+        }
+      } else if (currentSession) {
+        // Create new project (legacy mode)
+        const response = await apiService.saveFromEditor({
+          session_id: currentSession.sessionId,
+          html_content: htmlContent,
+          project_name: `Website_${currentSession.sessionId.slice(0, 8)}`,
+          description: `Website saved from editor on ${new Date().toLocaleDateString()}`,
+          auto_save: false
+        });
+
+        if (response.success) {
+          setOriginalHtmlContent(htmlContent);
+          setMessage({ 
+            type: 'success', 
+            text: `Project "${response.project_name}" saved successfully to database` 
+          });
+          
+          // Also save to conversation history for backward compatibility
+          await saveToMongoDB(htmlContent);
+        }
       }
     } catch (err: any) {
       console.error('Save error:', err);
@@ -533,26 +590,65 @@ export default function EditorPage() {
   const handleNavigation = (path: string) => {
     if (hasUnsavedChanges) {
       setPendingNavigation(path);
-      setShowSaveModal(true);
-      } else {
+      setShowExitModal(true);
+    } else {
       router.push(path);
     }
   };
 
-  const handleSaveAndNavigate = async () => {
-    await handleSave();
-    if (pendingNavigation) {
-      router.push(pendingNavigation);
+  const handleSaveAndExit = async () => {
+    try {
+      setIsSaving(true);
+      
+      // Save the current state before exiting
+      if (currentProject) {
+        // Update existing project
+        const response = await apiService.updateProject(currentProject.project_id, {
+          html_content: htmlContent,
+          project_name: currentProject.project_name
+        });
+        
+        if (response.success) {
+          console.log(`✅ Project "${currentProject.project_name}" saved before exit`);
+        }
+      } else if (currentSession) {
+        // Create new project (legacy mode)
+        const response = await apiService.saveFromEditor({
+          session_id: currentSession.sessionId,
+          html_content: htmlContent,
+          project_name: `Website_${currentSession.sessionId.slice(0, 8)}_Exit`,
+          description: `Website saved before exiting editor on ${new Date().toLocaleDateString()}`,
+          auto_save: false
+        });
+        
+        if (response.success) {
+          console.log(`✅ Project saved before exit: ${response.project_name}`);
+        }
+      }
+      
+      const targetPath = pendingNavigation || '/dashboard';
+      router.push(targetPath);
+    } catch (error) {
+      console.error('Failed to save before exit:', error);
+      // Still exit even if save fails, user chose to save
+      const targetPath = pendingNavigation || '/dashboard';
+      router.push(targetPath);
+    } finally {
+      setIsSaving(false);
+      setShowExitModal(false);
+      setPendingNavigation(null);
     }
-    setShowSaveModal(false);
+  };
+
+  const handleExitWithoutSaving = () => {
+    const targetPath = pendingNavigation || '/dashboard';
+    router.push(targetPath);
+    setShowExitModal(false);
     setPendingNavigation(null);
   };
 
-  const handleDiscardAndNavigate = () => {
-    if (pendingNavigation) {
-      router.push(pendingNavigation);
-    }
-    setShowSaveModal(false);
+  const handleCancelExit = () => {
+    setShowExitModal(false);
     setPendingNavigation(null);
   };
 
@@ -653,6 +749,56 @@ export default function EditorPage() {
     setIntelligentResponse(null);
   };
 
+  const handleProjectNameEdit = () => {
+    if (currentProject) {
+      setIsEditingProjectName(true);
+    }
+  };
+
+  const handleProjectNameSave = async () => {
+    if (!currentProject || !projectNameInput.trim()) {
+      setIsEditingProjectName(false);
+      setProjectNameInput(currentProject?.project_name || '');
+      return;
+    }
+
+    try {
+      const response = await apiService.updateProject(currentProject.project_id, {
+        project_name: projectNameInput.trim()
+      });
+
+      if (response.success) {
+        setCurrentProject(prev => prev ? {
+          ...prev,
+          project_name: projectNameInput.trim()
+        } : null);
+        setIsEditingProjectName(false);
+        setMessage({ 
+          type: 'success', 
+          text: 'Project name updated successfully' 
+        });
+      } else {
+        setMessage({ type: 'error', text: 'Failed to update project name' });
+      }
+    } catch (error) {
+      console.error('Error updating project name:', error);
+      setMessage({ type: 'error', text: 'Failed to update project name' });
+    }
+  };
+
+  const handleProjectNameCancel = () => {
+    setIsEditingProjectName(false);
+    setProjectNameInput(currentProject?.project_name || '');
+  };
+
+  const handleProjectNameKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleProjectNameSave();
+    } else if (e.key === 'Escape') {
+      handleProjectNameCancel();
+    }
+  };
+
   // Show loading screen while authentication is initializing
   if (authLoading) {
     return (
@@ -686,8 +832,8 @@ export default function EditorPage() {
     );
   }
 
-  // Show loading or no session error
-  if (!currentSession) {
+  // Show loading or no session/project error
+  if (!currentSession && !currentProject) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
         {isLoading ? (
@@ -698,16 +844,25 @@ export default function EditorPage() {
           </div>
         ) : (
           <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-8 shadow-lg text-center">
-                <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">No Session Found</h2>
-            <p className="text-gray-600 mb-6">Please generate a website first</p>
-                <button
-                  onClick={() => router.push('/')}
-              className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-purple-500/25 transform hover:scale-105 transition-all duration-300 flex items-center gap-2 mx-auto"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to Home
-                </button>
+            <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">No Project Found</h2>
+            <p className="text-gray-600 mb-6">Please select a project to edit or generate a new website</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-purple-500/25 transform hover:scale-105 transition-all duration-300 flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Dashboard
+              </button>
+              <button
+                onClick={() => router.push('/')}
+                className="px-6 py-3 bg-white border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all duration-300 flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Create New
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -723,21 +878,77 @@ export default function EditorPage() {
           <div className="flex items-center gap-3">
           <button
               onClick={() => handleNavigation('/dashboard')}
-              className="p-2 rounded-lg bg-white/80 border border-gray-300 text-gray-700 hover:bg-white hover:border-purple-400 hover:text-purple-600 transition-all duration-300"
+              className={clsx(
+                "p-2 rounded-lg border transition-all duration-300 relative",
+                hasUnsavedChanges
+                  ? "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100 hover:border-amber-400"
+                  : "bg-white/80 border-gray-300 text-gray-700 hover:bg-white hover:border-purple-400 hover:text-purple-600"
+              )}
+              title={hasUnsavedChanges ? "Back to Dashboard (unsaved changes)" : "Back to Dashboard"}
           >
             <ArrowLeft className="w-4 h-4" />
+            {hasUnsavedChanges && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white animate-pulse"></div>
+            )}
           </button>
           
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-white" />
-            </div>
+              </div>
               <div>
-                <h1 className="text-lg font-bold bg-gradient-to-r from-gray-900 to-purple-600 bg-clip-text text-transparent">
-                  Website Editor
-                </h1>
+                {currentProject ? (
+                  <div className="flex items-center gap-2">
+                    {isEditingProjectName ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={projectNameInput}
+                          onChange={(e) => setProjectNameInput(e.target.value)}
+                          onKeyPress={handleProjectNameKeyPress}
+                          onBlur={handleProjectNameSave}
+                          className="text-lg font-bold text-black bg-transparent border-b-2 border-purple-500 focus:outline-none focus:border-pink-500 min-w-0 max-w-48"
+                          autoFocus
+                          maxLength={50}
+                        />
+                        <button
+                          onClick={handleProjectNameSave}
+                          className="p-1 text-green-600 hover:bg-green-100 rounded"
+                          title="Save name"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={handleProjectNameCancel}
+                          className="p-1 text-red-600 hover:bg-red-100 rounded"
+                          title="Cancel"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div 
+                        className="flex items-center gap-2 cursor-pointer group"
+                        onClick={handleProjectNameEdit}
+                        title="Click to edit project name"
+                      >
+                        <h1 className="text-lg font-bold bg-gradient-to-r from-gray-900 to-purple-600 bg-clip-text text-transparent group-hover:from-purple-600 group-hover:to-pink-600 transition-all duration-200">
+                          {currentProject.project_name}
+                        </h1>
+                        <Edit className="w-4 h-4 text-gray-400 group-hover:text-purple-600 transition-colors duration-200" />
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-purple-500/10 to-pink-500/10 text-purple-600 rounded text-xs font-medium">
+                      <span>v{currentProject.mode === 'edit' ? 'Editing' : 'Viewing'}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <h1 className="text-lg font-bold bg-gradient-to-r from-gray-900 to-purple-600 bg-clip-text text-transparent">
+                    Website Editor
+                  </h1>
+                )}
+              </div>
             </div>
-          </div>
         </div>
 
           {/* Center Section - Tools */}
@@ -1045,16 +1256,15 @@ export default function EditorPage() {
         </div>
       </div>
 
-      {/* Save Confirmation Modal */}
-      <SaveConfirmationModal
-        isOpen={showSaveModal}
-        onSave={handleSaveAndNavigate}
-        onDiscard={handleDiscardAndNavigate}
-        onCancel={() => {
-          setShowSaveModal(false);
-          setPendingNavigation(null);
-        }}
+      {/* Exit Confirmation Modal */}
+      <ExitConfirmationModal
+        isOpen={showExitModal}
+        onSave={handleSaveAndExit}
+        onExit={handleExitWithoutSaving}
+        onCancel={handleCancelExit}
         isSaving={isSaving}
+        hasUnsavedChanges={hasUnsavedChanges}
+        exitDestination={pendingNavigation === '/dashboard' ? 'Dashboard' : 'Previous Page'}
       />
     </div>
   );

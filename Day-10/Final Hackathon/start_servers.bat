@@ -1,22 +1,28 @@
 @echo off
-echo 🚀 Starting Voice Website Generator...
-echo.
+TITLE VoiceWeb Development Servers
 
-echo 📋 Checking backend status...
-cd backend
-venv\Scripts\activate
-python -c "import requests; print('✅ Backend running on http://localhost:8000' if requests.get('http://localhost:8000/status').status_code == 200 else '❌ Backend not running')" 2>nul || echo "🔄 Starting backend server..."
+ECHO =======================================
+ECHO Starting VoiceWeb Servers
+ECHO =======================================
 
-echo.
-echo 🌐 Starting frontend server...
-cd ..\frontend
-start cmd /k "npm run dev"
+REM Get the directory of the batch file
+SET "BATCH_DIR=%~dp0"
 
-echo.
-echo ✅ Servers started!
-echo 📍 Backend: http://localhost:8000
-echo 📍 Frontend: http://localhost:3000
-echo.
-echo Press any key to open the application in your browser...
-pause >nul
-start http://localhost:3000 
+REM --- Start Backend Server ---
+ECHO.
+ECHO Starting FastAPI Backend Server...
+cd /d "%BATCH_DIR%backend"
+START "Backend" cmd /k "python start_server.py"
+
+REM --- Start Frontend Server ---
+ECHO.
+ECHO Starting Next.js Frontend Server...
+cd /d "%BATCH_DIR%frontend"
+START "Frontend" cmd /k "npm run dev"
+
+ECHO.
+ECHO =======================================
+ECHO Servers are starting in new windows.
+ECHO =======================================
+
+pause 

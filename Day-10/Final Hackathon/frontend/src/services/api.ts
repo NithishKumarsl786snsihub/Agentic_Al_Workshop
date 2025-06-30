@@ -71,6 +71,25 @@ export interface SaveResponse {
   message: string;
 }
 
+// NEW: Enhanced editor save interfaces
+export interface EditorSaveRequest {
+  session_id: string;
+  html_content: string;
+  project_id?: string;
+  project_name?: string;
+  description?: string;
+  auto_save?: boolean;
+}
+
+export interface EditorSaveResponse {
+  success: boolean;
+  message: string;
+  project_id: string;
+  project_name: string;
+  saved_at: string;
+  version: number;
+}
+
 export interface UndoRedoRequest {
   session_id: string;
 }
@@ -108,6 +127,41 @@ export interface ConversationListResponse {
   }>;
   total: number;
   success: boolean;
+}
+
+// Project management interfaces
+export interface Project {
+  project_id: string;
+  project_name: string;
+  description: string;
+  created_at: string;
+  last_modified: string;
+  file_size: number;
+  version: number;
+  tags: string[];
+  is_auto_save: boolean;
+  html_content: string;
+  preview_image?: string;  // Base64 full preview image
+  thumbnail_image?: string;  // Base64 thumbnail image
+}
+
+export interface ProjectListResponse {
+  success: boolean;
+  projects: Project[];
+  total: number;
+  has_more: boolean;
+}
+
+export interface LoadProjectResponse {
+  success: boolean;
+  html_content: string;
+  css_content?: string;
+  js_content?: string;
+  project_name?: string;
+  description?: string;
+  metadata?: Record<string, any>;
+  last_modified: string;
+  project_id: string;
 }
 
 class ApiService {
@@ -248,6 +302,14 @@ class ApiService {
     });
   }
 
+  // NEW: Enhanced save method for editor with MongoDB storage
+  async saveFromEditor(request: EditorSaveRequest): Promise<EditorSaveResponse> {
+    return this.makeRequest('/editor/save', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
   async undoChange(request: UndoRedoRequest): Promise<UndoRedoResponse> {
     return this.makeRequest<UndoRedoResponse>('/undo', {
       method: 'POST',
@@ -302,6 +364,57 @@ class ApiService {
   async deleteConversation(conversationId: string): Promise<{ success: boolean; message: string }> {
     return this.makeRequest(`/conversations/${conversationId}`, {
       method: 'DELETE',
+    });
+  }
+
+  // Project management methods
+  async getUserProjects(limit: number = 10, offset: number = 0, search?: string): Promise<ProjectListResponse> {
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString(),
+    });
+    
+    if (search) {
+      params.append('search', search);
+    }
+    
+    return this.makeRequest<ProjectListResponse>(`/projects?${params.toString()}`);
+  }
+
+  async deleteProject(projectId: string): Promise<{ success: boolean; message: string }> {
+    return this.makeRequest(`/projects/${projectId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async loadProject(projectId: string): Promise<LoadProjectResponse> {
+    return this.makeRequest<LoadProjectResponse>('/projects/load', {
+      method: 'POST',
+      body: JSON.stringify({ project_id: projectId }),
+    });
+  }
+
+  async renameProject(projectId: string, newName: string): Promise<{ success: boolean; message: string }> {
+    return this.makeRequest(`/projects/${projectId}/rename`, {
+      method: 'PUT',
+      body: JSON.stringify({ project_name: newName }),
+    });
+  }
+
+  async duplicateProject(projectId: string): Promise<{ success: boolean; message: string; project_id?: string }> {
+    return this.makeRequest(`/projects/${projectId}/duplicate`, {
+      method: 'POST',
+    });
+  }
+
+  async updateProject(projectId: string, data: {
+    html_content?: string;
+    project_name?: string;
+    description?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    return this.makeRequest(`/projects/${projectId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
     });
   }
 }

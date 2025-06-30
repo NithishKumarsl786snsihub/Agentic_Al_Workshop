@@ -241,38 +241,6 @@ class SessionManager:
         
         return self.sessions[session_id]["current_html"]
     
-    def save_html_file(self, session_id: str, html_content: str, filename: str) -> str:
-        """Save HTML content to file"""
-        # Create session directory
-        session_dir = os.path.join(self.settings.USER_FILES_DIR, session_id)
-        os.makedirs(session_dir, exist_ok=True)
-        
-        # Save file
-        file_path = os.path.join(session_dir, filename)
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(html_content)
-        
-        return file_path
-    
-    def load_html_file(self, session_id: str, filename: str) -> str:
-        """Load HTML content from file"""
-        file_path = os.path.join(self.settings.USER_FILES_DIR, session_id, filename)
-        
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File {filename} not found for session {session_id}")
-        
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    
-    def list_session_files(self, session_id: str) -> List[str]:
-        """List all files for a session"""
-        session_dir = os.path.join(self.settings.USER_FILES_DIR, session_id)
-        
-        if not os.path.exists(session_dir):
-            return []
-        
-        return [f for f in os.listdir(session_dir) if f.endswith('.html')]
-    
     def search_sessions(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
         """Search sessions using ChromaDB"""
         try:
@@ -309,11 +277,11 @@ class SessionManager:
             "can_undo": len(session["undo_stack"]) > 0,
             "can_redo": len(session["redo_stack"]) > 0,
             "current_html_size": len(session["current_html"]),
-            "files_saved": len(self.list_session_files(session_id))
+            "storage_type": "mongodb_only"
         }
     
     def cleanup_old_sessions(self, days_old: int = 30) -> int:
-        """Clean up sessions older than specified days"""
+        """Clean up sessions older than specified days (memory only - MongoDB handled separately)"""
         cutoff_date = datetime.now().timestamp() - (days_old * 24 * 60 * 60)
         cleaned_count = 0
         
@@ -325,15 +293,8 @@ class SessionManager:
                 sessions_to_remove.append(session_id)
         
         for session_id in sessions_to_remove:
-            # Remove from memory
+            # Remove from memory only (MongoDB data persists)
             del self.sessions[session_id]
-            
-            # Remove files
-            session_dir = os.path.join(self.settings.USER_FILES_DIR, session_id)
-            if os.path.exists(session_dir):
-                import shutil
-                shutil.rmtree(session_dir)
-            
             cleaned_count += 1
         
         return cleaned_count 

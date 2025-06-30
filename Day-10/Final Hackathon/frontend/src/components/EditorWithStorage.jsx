@@ -11,6 +11,7 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
+import apiService from '../services/apiService';
 
 /**
  * 🎯 EDITOR WITH STORAGE - Complete Implementation Example
@@ -42,7 +43,9 @@ const EditorWithStorage = () => {
     setProjectMetadata,
     setSessionId,
     setCursorPosition,
-    setScrollPosition
+    setScrollPosition,
+    setIsSaving,
+    setError
   } = useEditorStore();
 
   // Storage persistence hook
@@ -85,31 +88,38 @@ const EditorWithStorage = () => {
 
   // ========== PROJECT MANAGEMENT ==========
 
-  const handleSave = async () => {
-    if (!isAuthenticated) {
-      alert('Please log in to save your project');
-      return;
-    }
+  const handleSave = async (isAutoSave = false) => {
+    if (isSaving) return;
+    setIsSaving(true);
+    setError(null);
 
-    if (!htmlContent.trim()) {
-      alert('Please add some content before saving');
-      return;
-    }
+    const projectData = JSON.parse(sessionStorage.getItem('currentProject') || '{}');
 
     try {
-      const result = await saveProject({
-        projectName: projectName || 'Untitled Project',
-        description: description || ''
+      const response = await apiService.saveFromEditor({
+        session_id: sessionId,
+        html_content: htmlContent,
+        project_id: projectData.project_id,
+        project_name: projectData.project_name,
+        description: projectData.description,
+        auto_save: isAutoSave,
       });
-      
-      console.log('✅ Project saved:', result.projectId);
-      
-      // Show success notification
-      showNotification('Project saved successfully!', 'success');
-      
+
+      if (response.success) {
+        console.log('✅ Project saved:', response.projectId);
+        
+        // Show success notification
+        showNotification('Project saved successfully!', 'success');
+        
+      } else {
+        console.error('❌ Save failed:', response.error);
+        showNotification(response.error, 'error');
+      }
     } catch (error) {
       console.error('❌ Save failed:', error);
       showNotification(error.message, 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -300,7 +310,7 @@ const EditorWithStorage = () => {
 
               {/* Save Button */}
               <button
-                onClick={handleSave}
+                onClick={() => handleSave(true)}
                 disabled={isSaving || !isAuthenticated || !hasUnsavedChanges}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >

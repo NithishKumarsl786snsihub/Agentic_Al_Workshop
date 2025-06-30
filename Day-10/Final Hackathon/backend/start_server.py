@@ -6,6 +6,11 @@ Startup script for the Voice Website Generator Backend
 import os
 import sys
 from pathlib import Path
+import asyncio
+
+# Fix for NotImplementedError on Windows
+if sys.platform == "win32" and sys.version_info >= (3, 8):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 def check_environment():
     """Check if all required environment variables are set"""

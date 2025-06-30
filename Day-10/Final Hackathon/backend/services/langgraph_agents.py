@@ -245,7 +245,7 @@ class HTMLEditorTool(BaseTool):
         if not soup.find('style'):
             if soup.head:
                 soup.head.append(style_tag)
-        
+                
         css_rules = []
         
         if "center" in layout_type:

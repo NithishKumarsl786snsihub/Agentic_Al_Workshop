@@ -232,6 +232,23 @@ class ExitWarningResponse(BaseModel):
     message: str
     unsaved_changes_count: int
 
+# NEW: Editor-specific save endpoint with enhanced security and validation
+class EditorSaveRequest(BaseModel):
+    session_id: str
+    html_content: str
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None
+    description: Optional[str] = None
+    auto_save: bool = False
+
+class EditorSaveResponse(BaseModel):
+    success: bool
+    message: str
+    project_id: str
+    project_name: str
+    saved_at: datetime
+    version: int
+
 @app.get("/")
 async def root():
     return {
@@ -325,18 +342,17 @@ async def generate_website(request: GenerateRequest):
         session_manager.create_session(session_id, request.prompt, html_content)
         print("✅ Session created successfully")
         
-        # Save to file
-        print("💾 Saving to file...")
+        # Generate filename for response (no local file saving)
+        print("📝 Preparing response...")
         filename = f"website_{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
-        file_path = session_manager.save_html_file(session_id, html_content, filename)
-        print(f"✅ File saved: {filename}")
+        print(f"✅ Website generated successfully: {filename}")
         
         return GenerateResponse(
             html_content=html_content,
             session_id=session_id,
             filename=filename,
             success=True,
-            message="Website generated successfully"
+            message="Website generated successfully and stored in session"
         )
     except Exception as e:
         print(f"❌ Generation failed with error: {str(e)}")
@@ -492,21 +508,53 @@ async def edit_website(request: EditRequest):
         )
 
 @app.post("/save", response_model=SaveResponse)
-async def save_website(request: SaveRequest):
-    """Save website to file"""
+async def save_website(
+    request: SaveRequest,
+    current_user = Depends(get_current_active_user)
+):
+    """Save website to MongoDB (no local files)"""
     try:
-        # Generate filename if not provided
-        filename = request.filename or f"website_{request.session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+        # Generate project name from session if not provided
+        project_name = request.filename or f"website_{request.session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Save file
-        file_path = session_manager.save_html_file(request.session_id, request.html_content, filename)
+        # Remove .html extension if present for project name
+        if project_name.endswith('.html'):
+            project_name = project_name[:-5]
         
-        return SaveResponse(
-            filename=filename,
-            file_path=file_path,
-            success=True,
-            message="Website saved successfully"
+        # Save to MongoDB via storage service
+        result = await storage_service.save_project(
+            user_id=current_user.id,
+            session_id=request.session_id,
+            html_content=request.html_content,
+            project_name=project_name,
+            description=f"Website saved from session {request.session_id}",
+            metadata={
+                "saved_via": "editor_save_button",
+                "original_filename": request.filename,
+                "content_length": len(request.html_content),
+                "save_timestamp": datetime.now().isoformat()
+            },
+            auto_save=False
         )
+        
+        if result["success"]:
+            # Update session manager with current content (in-memory only)
+            session_manager.add_to_history(
+                request.session_id, 
+                request.html_content, 
+                "save", 
+                f"Saved as {project_name}"
+            )
+            
+            return SaveResponse(
+                filename=f"{project_name}.html",
+                file_path=f"mongodb://{result['project_id']}",  # Virtual path indicating MongoDB storage
+                success=True,
+                message=f"Website saved to database as '{project_name}'"
+            )
+        else:
+            raise HTTPException(status_code=500, detail=result["message"])
+            
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Save failed: {str(e)}")
 
@@ -562,19 +610,51 @@ async def get_session_history(session_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to get history: {str(e)}")
 
 @app.get("/download/{session_id}/{filename}")
-async def download_file(session_id: str, filename: str):
-    """Download a saved HTML file"""
+async def download_file(
+    session_id: str, 
+    filename: str,
+    current_user = Depends(get_current_active_user)
+):
+    """Download HTML content from MongoDB storage"""
     try:
-        file_path = os.path.join(settings.USER_FILES_DIR, session_id, filename)
+        # Load project from MongoDB using session_id
+        result = await storage_service.load_project(
+            user_id=current_user.id,
+            session_id=session_id
+        )
         
-        if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="File not found")
+        if not result["success"]:
+            raise HTTPException(status_code=404, detail="Project not found")
         
-        return FileResponse(
-            path=file_path,
+        # Create temporary file for download
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as temp_file:
+            temp_file.write(result["html_content"])
+            temp_file_path = temp_file.name
+        
+        # Return file response and clean up temp file after sending
+        response = FileResponse(
+            path=temp_file_path,
             filename=filename,
             media_type='text/html'
         )
+        
+        # Clean up temp file after response is sent
+        import os
+        def cleanup():
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+        
+        # Schedule cleanup (this is a simple approach, in production you might want a better cleanup strategy)
+        import threading
+        threading.Timer(10.0, cleanup).start()
+        
+        return response
+        
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
 
@@ -684,7 +764,8 @@ async def save_project(
             project_name=request.project_name,
             description=request.description,
             metadata=request.metadata,
-            auto_save=request.auto_save
+            auto_save=request.auto_save,
+            generate_preview=request.generate_preview
         )
         
         if result["success"]:
@@ -724,7 +805,9 @@ async def load_project(
                 description=result.get("description"),
                 metadata=result.get("metadata", {}),
                 last_modified=result["last_modified"],
-                project_id=result["project_id"]
+                project_id=result["project_id"],
+                preview_image=result.get("preview_image"),
+                thumbnail_image=result.get("thumbnail_image")
             )
         else:
             raise HTTPException(status_code=404, detail=result["message"])
@@ -786,6 +869,89 @@ async def delete_project(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete project: {str(e)}")
+
+@app.put("/projects/{project_id}/rename")
+async def rename_project(
+    project_id: str,
+    request: dict,
+    current_user = Depends(get_current_active_user)
+):
+    """Rename a project"""
+    try:
+        project_name = request.get("project_name", "").strip()
+        if not project_name:
+            raise HTTPException(status_code=400, detail="Project name cannot be empty")
+        
+        if len(project_name) > 100:
+            raise HTTPException(status_code=400, detail="Project name too long (max 100 characters)")
+        
+        result = await storage_service.rename_project(
+            user_id=current_user.id,
+            project_id=project_id,
+            new_name=project_name
+        )
+        
+        if result["success"]:
+            return {"success": True, "message": result["message"]}
+        else:
+            raise HTTPException(status_code=404, detail=result["message"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to rename project: {str(e)}")
+
+@app.post("/projects/{project_id}/duplicate")
+async def duplicate_project(
+    project_id: str,
+    current_user = Depends(get_current_active_user)
+):
+    """Duplicate a project"""
+    try:
+        result = await storage_service.duplicate_project(
+            user_id=current_user.id,
+            project_id=project_id
+        )
+        
+        if result["success"]:
+            return {
+                "success": True, 
+                "message": result["message"],
+                "project_id": result.get("new_project_id")
+            }
+        else:
+            raise HTTPException(status_code=404, detail=result["message"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to duplicate project: {str(e)}")
+
+@app.put("/projects/{project_id}")
+async def update_project(
+    project_id: str,
+    request: dict,
+    current_user = Depends(get_current_active_user)
+):
+    """Update an existing project"""
+    try:
+        result = await storage_service.update_project(
+            user_id=current_user.id,
+            project_id=project_id,
+            html_content=request.get("html_content"),
+            project_name=request.get("project_name"),
+            description=request.get("description")
+        )
+        
+        if result["success"]:
+            return {"success": True, "message": result["message"]}
+        else:
+            raise HTTPException(status_code=404, detail=result["message"])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update project: {str(e)}")
 
 @app.post("/autosave", response_model=AutoSaveStateResponse)
 async def auto_save_state(request: AutoSaveStateRequest):
@@ -880,6 +1046,83 @@ async def proxy_image(image_name: str):
 async def get_placeholder_image(image_name: str):
     """Get placeholder image by name"""
     return await image_service.proxy_image(image_name)
+
+@app.post("/editor/save", response_model=EditorSaveResponse)
+async def save_from_editor(
+    request: EditorSaveRequest,
+    current_user = Depends(get_current_active_user)
+):
+    """
+    Save website content from editor to MongoDB
+    Secure, authenticated endpoint with proper validation
+    """
+    try:
+        # Input validation
+        if not request.html_content.strip():
+            raise HTTPException(status_code=400, detail="HTML content cannot be empty")
+        
+        if len(request.html_content) > 10 * 1024 * 1024:  # 10MB limit
+            raise HTTPException(status_code=400, detail="HTML content too large (max 10MB)")
+        
+        # Generate project name if not provided
+        project_name = request.project_name or f"Project_{request.session_id[:8]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        # Clean project name (remove any potentially harmful characters)
+        import re
+        project_name = re.sub(r'[^\w\s-]', '', project_name).strip()
+        if not project_name:
+            project_name = f"Project_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        # Save to MongoDB with comprehensive metadata
+        result = await storage_service.save_project(
+            user_id=current_user.id,
+            session_id=request.session_id,
+            html_content=request.html_content,
+            project_name=project_name,
+            description=request.description or f"Website saved from editor session {request.session_id}",
+            metadata={
+                "saved_via": "editor_save_endpoint",
+                "user_agent": "web_editor",
+                "content_length": len(request.html_content),
+                "save_timestamp": datetime.now().isoformat(),
+                "auto_save": request.auto_save,
+                "session_id": request.session_id,
+                "user_id": current_user.id,
+                "editor_version": "2.0.0"
+            },
+            auto_save=request.auto_save,
+            project_id=request.project_id
+        )
+        
+        if result["success"]:
+            # Update session manager (in-memory state)
+            session_manager.add_to_history(
+                request.session_id,
+                request.html_content,
+                "editor_save",
+                f"Saved as '{project_name}'"
+            )
+            
+            # Log successful save
+            print(f"✅ Editor save successful - User: {current_user.username}, Project: {project_name}, Size: {len(request.html_content)} chars")
+            
+            return EditorSaveResponse(
+                success=True,
+                message=f"Project '{project_name}' saved successfully",
+                project_id=result["project_id"],
+                project_name=project_name,
+                saved_at=result["saved_at"],
+                version=1  # Will be incremented by storage service for updates
+            )
+        else:
+            raise HTTPException(status_code=500, detail=result.get("message", "Failed to save project"))
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log error for debugging
+        print(f"❌ Editor save error - User: {current_user.username if 'current_user' in locals() else 'unknown'}, Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Save operation failed: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run(

@@ -12,6 +12,14 @@ from core.database import get_database
 from services.session_manager import SessionManager
 import asyncio
 
+# Import screenshot service for preview generation
+try:
+    from services.screenshot_service import generate_project_previews
+    SCREENSHOT_AVAILABLE = True
+except ImportError:
+    print("⚠️ Screenshot service not available. Install playwright: pip install playwright")
+    SCREENSHOT_AVAILABLE = False
+
 class StorageService:
     """Comprehensive storage service for code persistence"""
     
@@ -34,7 +42,8 @@ class StorageService:
                           description: Optional[str] = None,
                           metadata: Optional[Dict[str, Any]] = None,
                           auto_save: bool = False,
-                          project_id: Optional[str] = None) -> Dict[str, Any]:
+                          project_id: Optional[str] = None,
+                          generate_preview: bool = True) -> Dict[str, Any]:
         """Save project to MongoDB"""
         try:
             db = await self.get_database()
@@ -48,6 +57,16 @@ class StorageService:
                 is_new_project = True
             else:
                 is_new_project = False
+            
+            # Generate preview images if requested and available
+            preview_images = {}
+            if generate_preview and SCREENSHOT_AVAILABLE and not auto_save:
+                try:
+                    preview_images = await generate_project_previews(html_content, project_id)
+                    print(f"✅ Generated preview images for project {project_id}")
+                except Exception as e:
+                    print(f"⚠️ Failed to generate preview images: {e}")
+                    preview_images = {}
             
             # Prepare project data
             project_data = {
@@ -65,7 +84,9 @@ class StorageService:
                 "version": 1,
                 "file_size": len(html_content) + len(css_content or "") + len(js_content or ""),
                 "tags": self._extract_tags_from_content(html_content),
-                "status": "active"
+                "status": "active",
+                "preview_image": preview_images.get("full"),
+                "thumbnail_image": preview_images.get("thumbnail")
             }
             
             if is_new_project:
@@ -75,15 +96,11 @@ class StorageService:
                 # Insert new project
                 result = await collection.insert_one(project_data)
                 
-                # Also save to file system for backup
-                file_path = await self._save_to_file_system(project_id, html_content, css_content, js_content)
-                
                 return {
                     "success": True,
                     "message": "Project saved successfully",
                     "project_id": project_id,
                     "saved_at": now,
-                    "file_path": file_path,
                     "is_new": True
                 }
             else:
@@ -99,15 +116,11 @@ class StorageService:
                 )
                 
                 if result.modified_count > 0:
-                    # Update file system backup
-                    file_path = await self._save_to_file_system(project_id, html_content, css_content, js_content)
-                    
                     return {
                         "success": True,
                         "message": "Project updated successfully",
                         "project_id": project_id,
                         "saved_at": now,
-                        "file_path": file_path,
                         "is_new": False
                     }
                 else:
@@ -159,7 +172,9 @@ class StorageService:
                 "metadata": project.get("metadata", {}),
                 "last_modified": project.get("last_modified"),
                 "project_id": project.get("project_id"),
-                "version": project.get("version", 1)
+                "version": project.get("version", 1),
+                "preview_image": project.get("preview_image"),
+                "thumbnail_image": project.get("thumbnail_image")
             }
             
         except Exception as e:
@@ -199,7 +214,10 @@ class StorageService:
                 "file_size": 1,
                 "version": 1,
                 "tags": 1,
-                "is_auto_save": 1
+                "is_auto_save": 1,
+                "html_content": 1,  # Include for preview generation
+                "preview_image": 1,
+                "thumbnail_image": 1
             }).sort("last_modified", -1).skip(offset).limit(limit)
             
             projects = await cursor.to_list(length=limit)
@@ -207,7 +225,7 @@ class StorageService:
             # Format response
             formatted_projects = []
             for project in projects:
-                formatted_projects.append({
+                formatted_project = {
                     "project_id": project["project_id"],
                     "project_name": project["project_name"],
                     "description": project["description"],
@@ -216,8 +234,34 @@ class StorageService:
                     "file_size": project["file_size"],
                     "version": project["version"],
                     "tags": project.get("tags", []),
-                    "is_auto_save": project.get("is_auto_save", False)
-                })
+                    "is_auto_save": project.get("is_auto_save", False),
+                    "html_content": project.get("html_content", ""),  # Include for frontend
+                    "preview_image": project.get("preview_image"),
+                    "thumbnail_image": project.get("thumbnail_image")
+                }
+                
+                # Generate preview images if they don't exist and service is available
+                if not formatted_project["preview_image"] and SCREENSHOT_AVAILABLE:
+                    try:
+                        html_content = project.get("html_content", "")
+                        if html_content:
+                            preview_images = await generate_project_previews(html_content, project["project_id"])
+                            if preview_images.get("full"):
+                                # Update the database with generated images
+                                await collection.update_one(
+                                    {"project_id": project["project_id"]},
+                                    {"$set": {
+                                        "preview_image": preview_images.get("full"),
+                                        "thumbnail_image": preview_images.get("thumbnail")
+                                    }}
+                                )
+                                formatted_project["preview_image"] = preview_images.get("full")
+                                formatted_project["thumbnail_image"] = preview_images.get("thumbnail")
+                                print(f"✅ Generated missing preview for project {project['project_id']}")
+                    except Exception as e:
+                        print(f"⚠️ Failed to generate missing preview for {project['project_id']}: {e}")
+                
+                formatted_projects.append(formatted_project)
             
             return {
                 "success": True,
@@ -249,6 +293,182 @@ class StorageService:
         except Exception as e:
             print(f"❌ Error deleting project: {e}")
             return {"success": False, "message": f"Failed to delete project: {str(e)}"}
+
+    async def rename_project(self, user_id: str, project_id: str, new_name: str) -> Dict[str, Any]:
+        """Rename a project"""
+        try:
+            db = await self.get_database()
+            collection = db.user_projects
+            
+            # Check if project exists and belongs to user
+            project = await collection.find_one({
+                "project_id": project_id, 
+                "user_id": user_id,
+                "status": "active"
+            })
+            
+            if not project:
+                return {"success": False, "message": "Project not found"}
+            
+            # Update the project name
+            result = await collection.update_one(
+                {"project_id": project_id, "user_id": user_id},
+                {
+                    "$set": {
+                        "project_name": new_name,
+                        "last_modified": datetime.utcnow()
+                    }
+                }
+            )
+            
+            if result.modified_count > 0:
+                return {"success": True, "message": "Project renamed successfully"}
+            else:
+                return {"success": False, "message": "Failed to rename project"}
+                
+        except Exception as e:
+            print(f"❌ Error renaming project: {e}")
+            return {"success": False, "message": f"Failed to rename project: {str(e)}"}
+
+    async def duplicate_project(self, user_id: str, project_id: str) -> Dict[str, Any]:
+        """Duplicate a project"""
+        try:
+            db = await self.get_database()
+            collection = db.user_projects
+            
+            # Find the original project
+            original_project = await collection.find_one({
+                "project_id": project_id,
+                "user_id": user_id,
+                "status": "active"
+            })
+            
+            if not original_project:
+                return {"success": False, "message": "Project not found"}
+            
+            # Create new project with duplicated data
+            new_project_id = str(uuid.uuid4())
+            original_name = original_project["project_name"]
+            new_name = f"Copy_{original_name}"
+            
+            # Ensure unique name by adding numbers if needed
+            count = 1
+            while await collection.find_one({
+                "user_id": user_id,
+                "project_name": new_name,
+                "status": "active"
+            }):
+                new_name = f"Copy_{count}_{original_name}"
+                count += 1
+            
+            # Create duplicate project
+            now = datetime.utcnow()
+            duplicate_project = {
+                "project_id": new_project_id,
+                "user_id": user_id,
+                "session_id": str(uuid.uuid4()),  # New session ID
+                "project_name": new_name,
+                "description": f"Copy of {original_project.get('description', 'project')}",
+                "html_content": original_project["html_content"],
+                "css_content": original_project.get("css_content", ""),
+                "js_content": original_project.get("js_content", ""),
+                "file_size": original_project["file_size"],
+                "version": 1,  # Start with version 1 for duplicates
+                "created_at": now,
+                "last_modified": now,
+                "status": "active",
+                "is_auto_save": False,
+                "tags": original_project.get("tags", []),
+                "preview_image": original_project.get("preview_image"),  # Copy preview images
+                "thumbnail_image": original_project.get("thumbnail_image"),
+                "metadata": {
+                    **original_project.get("metadata", {}),
+                    "duplicated_from": project_id,
+                    "duplicated_at": now.isoformat()
+                }
+            }
+            
+            # Insert the duplicate
+            await collection.insert_one(duplicate_project)
+            
+            return {
+                "success": True,
+                "message": f"Project duplicated successfully as '{new_name}'",
+                "new_project_id": new_project_id
+            }
+            
+        except Exception as e:
+            print(f"❌ Error duplicating project: {e}")
+            return {"success": False, "message": f"Failed to duplicate project: {str(e)}"}
+
+    async def update_project(self, 
+                           user_id: str, 
+                           project_id: str,
+                           html_content: Optional[str] = None,
+                           project_name: Optional[str] = None,
+                           description: Optional[str] = None) -> Dict[str, Any]:
+        """Update an existing project"""
+        try:
+            db = await self.get_database()
+            collection = db.user_projects
+            
+            # Check if project exists and belongs to user
+            project = await collection.find_one({
+                "project_id": project_id,
+                "user_id": user_id,
+                "status": "active"
+            })
+            
+            if not project:
+                return {"success": False, "message": "Project not found"}
+            
+            # Build update data
+            update_data = {
+                "last_modified": datetime.utcnow()
+            }
+            
+            # Generate new preview images if HTML content is being updated
+            if html_content is not None:
+                update_data["html_content"] = html_content
+                update_data["file_size"] = len(html_content)
+                # Increment version when content is updated
+                update_data["version"] = project.get("version", 1) + 1
+                
+                # Clear old preview images (they will be regenerated)
+                update_data["preview_image"] = None
+                update_data["thumbnail_image"] = None
+                
+                # Generate new preview images if service is available
+                if SCREENSHOT_AVAILABLE:
+                    try:
+                        preview_images = await generate_project_previews(html_content, project_id)
+                        if preview_images.get("full"):
+                            update_data["preview_image"] = preview_images.get("full")
+                            update_data["thumbnail_image"] = preview_images.get("thumbnail")
+                            print(f"✅ Regenerated preview images for updated project {project_id}")
+                    except Exception as e:
+                        print(f"⚠️ Failed to regenerate preview images for {project_id}: {e}")
+            
+            if project_name is not None:
+                update_data["project_name"] = project_name
+            
+            if description is not None:
+                update_data["description"] = description
+            
+            # Update the project
+            result = await collection.update_one(
+                {"project_id": project_id, "user_id": user_id},
+                {"$set": update_data}
+            )
+            
+            if result.modified_count > 0:
+                return {"success": True, "message": "Project updated successfully"}
+            else:
+                return {"success": False, "message": "No changes were made"}
+                
+        except Exception as e:
+            print(f"❌ Error updating project: {e}")
+            return {"success": False, "message": f"Failed to update project: {str(e)}"}
     
     async def auto_save_state(self,
                              session_id: str,
@@ -406,58 +626,9 @@ class StorageService:
     def stop_auto_save(self, session_id: str):
         """Stop auto-save for a session"""
         if session_id in self.auto_save_tasks:
-            task = self.auto_save_tasks[session_id]
-            task.cancel()
+            self.auto_save_tasks[session_id].cancel()
             del self.auto_save_tasks[session_id]
-            print(f"🛑 Stopped auto-save for session {session_id}")
-    
-    async def _save_to_file_system(self, 
-                                  project_id: str, 
-                                  html_content: str,
-                                  css_content: Optional[str] = None,
-                                  js_content: Optional[str] = None) -> str:
-        """Save project to file system as backup"""
-        try:
-            # Create project directory
-            project_dir = os.path.join("user_files", "projects", project_id)
-            os.makedirs(project_dir, exist_ok=True)
-            
-            # Save HTML file
-            html_file = os.path.join(project_dir, "index.html")
-            with open(html_file, "w", encoding="utf-8") as f:
-                f.write(html_content)
-            
-            # Save CSS file if provided
-            if css_content:
-                css_file = os.path.join(project_dir, "style.css")
-                with open(css_file, "w", encoding="utf-8") as f:
-                    f.write(css_content)
-            
-            # Save JS file if provided
-            if js_content:
-                js_file = os.path.join(project_dir, "script.js")
-                with open(js_file, "w", encoding="utf-8") as f:
-                    f.write(js_content)
-            
-            # Save metadata
-            metadata_file = os.path.join(project_dir, "metadata.json")
-            metadata = {
-                "project_id": project_id,
-                "saved_at": datetime.utcnow().isoformat(),
-                "files": {
-                    "html": "index.html",
-                    "css": "style.css" if css_content else None,
-                    "js": "script.js" if js_content else None
-                }
-            }
-            with open(metadata_file, "w", encoding="utf-8") as f:
-                json.dump(metadata, f, indent=2)
-            
-            return project_dir
-            
-        except Exception as e:
-            print(f"❌ Error saving to file system: {e}")
-            return ""
+            print(f"🛑 Auto-save stopped for session {session_id}")
     
     def _extract_tags_from_content(self, html_content: str) -> List[str]:
         """Extract tags from HTML content for search"""

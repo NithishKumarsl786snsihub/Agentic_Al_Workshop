@@ -39,6 +39,7 @@ class SaveCodeRequest(BaseModel):
     description: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
     auto_save: bool = False
+    generate_preview: bool = True  # Whether to generate preview images
 
 class SaveCodeResponse(BaseModel):
     success: bool
@@ -61,6 +62,8 @@ class LoadCodeResponse(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     last_modified: datetime
     project_id: str
+    preview_image: Optional[str] = None  # Base64 full preview image
+    thumbnail_image: Optional[str] = None  # Base64 thumbnail image
 
 class ProjectListRequest(BaseModel):
     limit: int = 10
