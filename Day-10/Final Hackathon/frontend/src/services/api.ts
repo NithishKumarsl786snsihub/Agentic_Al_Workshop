@@ -164,6 +164,16 @@ export interface LoadProjectResponse {
   project_id: string;
 }
 
+interface PreviewParams {
+  html_content: string;
+  project_id: string;
+}
+
+interface PreviewResponse {
+  full: string;
+  thumbnail: string;
+}
+
 class ApiService {
   private baseUrl: string;
 
@@ -415,6 +425,16 @@ class ApiService {
     return this.makeRequest(`/projects/${projectId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Generate preview images from HTML content
+   */
+  async generatePreviews(params: PreviewParams): Promise<PreviewResponse> {
+    return this.makeRequest<PreviewResponse>('/api/projects/generate-previews', {
+      method: 'POST',
+      body: JSON.stringify(params)
     });
   }
 }

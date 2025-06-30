@@ -96,6 +96,11 @@ const EditorWithStorage = () => {
     const projectData = JSON.parse(sessionStorage.getItem('currentProject') || '{}');
 
     try {
+      const previewResponse = await apiService.generatePreviews({
+        html_content: htmlContent,
+        project_id: projectData.project_id
+      });
+
       const response = await apiService.saveFromEditor({
         session_id: sessionId,
         html_content: htmlContent,
@@ -103,21 +108,15 @@ const EditorWithStorage = () => {
         project_name: projectData.project_name,
         description: projectData.description,
         auto_save: isAutoSave,
+        preview_image: previewResponse.full,
+        thumbnail_image: previewResponse.thumbnail
       });
 
-      if (response.success) {
-        console.log('✅ Project saved:', response.projectId);
-        
-        // Show success notification
-        showNotification('Project saved successfully!', 'success');
-        
-      } else {
-        console.error('❌ Save failed:', response.error);
-        showNotification(response.error, 'error');
+      if (!response.success) {
+        throw new Error(response.error || 'Save failed');
       }
     } catch (error) {
-      console.error('❌ Save failed:', error);
-      showNotification(error.message, 'error');
+      setError(error.message);
     } finally {
       setIsSaving(false);
     }
