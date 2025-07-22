@@ -85,13 +85,6 @@ User Query → Router Agent → [Web/RAG/LLM Agent] → Summarization Agent → 
    - Place PDF, TXT, or DOCX files in the `my_docs` folder
    - The system will automatically process them into the knowledge base
 
-### Running the Application
-
-```bash
-streamlit run app.py
-```
-
-The application will be available at `http://localhost:8501`
 
 ## 📖 Usage Guide
 
@@ -178,59 +171,5 @@ multi-agent-rag-system/
 └── .gitignore           # Git ignore file
 ```
 
-## 🔧 Troubleshooting
 
-### Common Issues
-
-1. **API Key Error**
-   - Ensure your Gemini API key is correctly set in `.env`
-   - Check that the key has necessary permissions
-
-2. **No Knowledge Base**
-   - Add documents to the `my_docs` folder
-   - Click "Rebuild Knowledge Base" in the sidebar
-
-3. **Web Search Failures**
-   - DuckDuckGo searches may sometimes fail
-   - The system will gracefully handle errors and inform the user
-
-4. **Document Processing Issues**
-   - Ensure documents are in supported formats (PDF, TXT, DOCX)
-   - Check file permissions and encoding
-
-### Performance Optimization
-
-- **Large Documents**: Consider splitting very large documents
-- **Memory Usage**: Monitor memory usage with many documents
-- **API Limits**: Be aware of Gemini API rate limits
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **LangChain** for the RAG framework
-- **LangGraph** for multi-agent orchestration
-- **Google AI** for Gemini language model
-- **Streamlit** for the web interface
-- **FAISS** for vector similarity search
-
-## 📞 Support
-
-If you encounter any issues or have questions, please:
-1. Check this README for common solutions
-2. Review the troubleshooting section
-3. Open an issue on GitHub with details about your problem
-
----
-
-**Built with ❤️ using LangGraph, Streamlit, and Gemini AI**
+**Enjoy your Multi-Agent Rag System!** 
