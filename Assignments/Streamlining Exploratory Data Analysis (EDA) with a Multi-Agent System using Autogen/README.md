@@ -46,6 +46,7 @@ The final output is a comprehensive EDA report that includes:
 - **Collaboration**: Modular agent design supports feedback and iterative improvement
 - **Professional Reporting**: Generates ready-to-use EDA reports for stakeholders
 
+
 ## Requirements
 - Python 3.8+
 - [Autogen](https://github.com/microsoft/autogen)

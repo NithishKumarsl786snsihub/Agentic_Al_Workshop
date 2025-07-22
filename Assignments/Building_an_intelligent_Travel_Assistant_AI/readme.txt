@@ -25,5 +25,6 @@ This notebook is an interactive travel assistant that helps you plan your trip b
 - You need a free API key from [WeatherAPI.com](https://www.weatherapi.com/) (sign up and verify your email).
 - For best results, enable sharing in Colab for the Gradio app.
 
+
 ---
 Plan smarter, travel happier! ✈️🌍 
