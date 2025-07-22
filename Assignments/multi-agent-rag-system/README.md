@@ -172,4 +172,4 @@ multi-agent-rag-system/
 ```
 
 
-**Enjoy your Multi-Agent Rag System!** 
+**Enjoy your Multi-Agent Research and Summarization System!** 
