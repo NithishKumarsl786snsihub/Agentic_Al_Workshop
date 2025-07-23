@@ -1,0 +1,19 @@
+# Python/Streamlit ignores
+venv/
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+.DS_Store
+.ipynb_checkpoints/
+*.log
+*.bak
+*.swp
+# VSCode
+.vscode/
+# PyCharm
+.idea/
+# OS files
+Thumbs.db 
