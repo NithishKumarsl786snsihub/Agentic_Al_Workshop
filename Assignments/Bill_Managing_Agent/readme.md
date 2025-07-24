@@ -3,6 +3,7 @@
 A sophisticated multi-agent system that processes bill images, categorizes expenses, and provides intelligent spending insights using Google Gemini AI and AutoGen framework.
 
 ![Bill Management Agent](https://img.shields.io/badge/AI-Powered-blue) ![Streamlit](https://img.shields.io/badge/Built%20with-Streamlit-red) ![Gemini](https://img.shields.io/badge/Gemini-AI-green)
+![AI Bill Management Agent UI Overview](AI-Bill-Management-Agent.png)
 
 ## ✨ Features
 
@@ -225,38 +226,5 @@ The system uses four specialized agents:
 - Avoid blurry or rotated images
 - Images should be under 10MB
 
-## 🤝 Contributing
-
-We welcome contributions! Please feel free to submit issues and pull requests.
-
-### Development Setup
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📜 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Google Gemini AI for powerful vision capabilities
-- Microsoft AutoGen for multi-agent framework
-- Streamlit for the amazing web app framework
-- The open-source community for various libraries used
-
-## 📧 Support
-
-If you encounter any issues or have questions:
-
-1. Check the [Troubleshooting](#-troubleshooting) section
-2. Search existing [GitHub Issues](https://github.com/your-repo/issues)
-3. Create a new issue with detailed information
-
----
-
-**Made with ❤️ by [Your Name]**
 
 *Transform your expense tracking with AI-powered multi-agent collaboration!*

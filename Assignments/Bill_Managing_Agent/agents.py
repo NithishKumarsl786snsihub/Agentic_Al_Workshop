@@ -36,7 +36,8 @@ class BillManagementAgents:
             human_input_mode="NEVER",
             code_execution_config=False,
             system_message="""You are a user proxy that initiates conversations about bill processing. 
-            You provide bill images and expense data to the group manager for processing."""
+            You provide bill images and expense data to the group manager for processing.""",
+            llm_config=False
         )
         
         # Bill Processing Agent
@@ -51,6 +52,7 @@ class BillManagementAgents:
             5. Handle various bill formats and layouts
             
             Always respond with clear categorization results and maintain accuracy in expense extraction."""
+            , llm_config=False
         )
         
         # Expense Summarization Agent
@@ -66,6 +68,7 @@ class BillManagementAgents:
             6. Generate comprehensive summaries with financial insights
             
             Focus on delivering valuable financial insights that help users manage their expenses better."""
+            , llm_config=False
         )
         
         # Setup Group Chat
@@ -77,7 +80,8 @@ class BillManagementAgents:
         )
         
         self.manager = GroupChatManager(
-            groupchat=self.group_chat
+            groupchat=self.group_chat,
+            llm_config=False
         )
     
     def process_bill_with_gemini(self, image_file):
